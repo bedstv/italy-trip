@@ -1,4 +1,4 @@
-const CACHE = "italy-trip-v3"; // ← 你之後若再改動核心檔案，改 v4、v5…
+const CACHE = "italy-trip-v6";
 
 const ASSETS = [
   "./",
@@ -22,13 +22,13 @@ self.addEventListener("activate", (e) => {
   self.clients.claim();
 });
 
-// 不快取 Google / Apps Script 回應，避免更新卡住
 self.addEventListener("fetch", (e) => {
   const url = new URL(e.request.url);
   const host = url.hostname;
 
+  // ✅ 外部資料永遠走網路（避免看到舊行程）
   if (host.includes("google.com") || host.includes("gstatic.com")) {
-    return; // 直接走網路
+    return;
   }
 
   e.respondWith(

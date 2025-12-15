@@ -27,24 +27,32 @@
     </div>
   </header>
 
+  <!-- Top3：快速操作列 -->
+  <section class="quickbar">
+    <div class="chips">
+      <button id="modeTodayBtn" class="chip chipOn">今天</button>
+      <button id="modeAllBtn" class="chip">全部</button>
+      <button id="toggleMustBtn" class="chip chipOn">只看必去</button>
+      <button id="toggleOptBtn" class="chip">顯示備選</button>
+    </div>
+
+    <input id="searchInput" class="search" type="search"
+      placeholder="搜尋：景點/餐廳/城市/地點…" autocomplete="off">
+  </section>
+
+  <!-- 進階篩選：保留（需要時才用） -->
   <section class="filters">
     <select id="dateSel"></select>
     <select id="citySel"></select>
     <select id="typeSel"></select>
-    <select id="prioSel">
-      <option value="">全部（必去+備選）</option>
-      <option value="必去">只看必去</option>
-      <option value="備選">只看備選</option>
-    </select>
+    <select id="prioSel"></select>
   </section>
 
   <main id="list" class="list"></main>
 
-  <!-- SheetJS (xlsx parser) -->
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <script src="./app.js"></script>
 
-  <!-- Service Worker：提供離線快取（不快取 Google/Script 回應） -->
   <script>
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('./sw.js');
