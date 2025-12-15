@@ -4,8 +4,10 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>義大利行程</title>
+
   <link rel="manifest" href="./manifest.json">
   <link rel="stylesheet" href="./style.css" />
+
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
 </head>
@@ -38,11 +40,15 @@
 
   <main id="list" class="list"></main>
 
-  <!-- SheetJS (xlsx) -->
+  <!-- SheetJS (xlsx parser) -->
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <script src="./app.js"></script>
+
+  <!-- Service Worker：提供離線快取（不快取 Google/Script 回應） -->
   <script>
-    //if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js');
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('./sw.js');
+    }
   </script>
 </body>
 </html>

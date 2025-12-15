@@ -1,4 +1,5 @@
-const CACHE = "italy-trip-v2"; // ← 每次改檔都要加版本號
+const CACHE = "italy-trip-v3"; // ← 你之後若再改動核心檔案，改 v4、v5…
+
 const ASSETS = [
   "./",
   "./index.html",
@@ -19,12 +20,13 @@ self.addEventListener("activate", (e) => {
   );
 });
 
+// 不快取 Google / Apps Script 回應，避免更新卡住
 self.addEventListener("fetch", (e) => {
   const url = new URL(e.request.url);
+  const host = url.hostname;
 
-  // 外部（docs.google.com）永遠走網路，不要用快取
-  if (url.hostname.includes("google.com")) {
-    return;
+  if (host.includes("google.com") || host.includes("gstatic.com")) {
+    return; // 直接走網路
   }
 
   e.respondWith(
