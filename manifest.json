@@ -1,0 +1,9 @@
+{
+  "name": "義大利行程",
+  "short_name": "Italy Trip",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#ffffff",
+  "icons": []
+}

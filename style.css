@@ -1,0 +1,116 @@
+:root{
+  --bg:#ffffff;
+  --card:#f3f4f6;
+  --text:#111827;
+  --muted:#6b7280;
+  --border:#e5e7eb;
+}
+
+*{ box-sizing:border-box; }
+body{
+  margin:0;
+  font-family:-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans TC", sans-serif;
+  background:var(--bg);
+  color:var(--text);
+}
+
+.topbar{
+  position:sticky; top:0;
+  background:var(--bg);
+  border-bottom:1px solid var(--border);
+  padding:14px 14px 10px;
+  display:flex;
+  gap:12px;
+  align-items:flex-start;
+  justify-content:space-between;
+  z-index:10;
+}
+
+.h1{ font-size:20px; font-weight:800; }
+.sub{ font-size:12px; color:var(--muted); margin-top:4px; }
+
+.actions{ display:flex; gap:8px; align-items:center; }
+.btn{
+  border:1px solid var(--border);
+  background:#fff;
+  padding:10px 12px;
+  border-radius:12px;
+  font-size:14px;
+}
+.fileBtn{ position:relative; overflow:hidden; }
+
+.filters{
+  padding:10px 14px;
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:10px;
+  border-bottom:1px solid var(--border);
+  background:var(--bg);
+}
+select{
+  width:100%;
+  padding:12px;
+  border-radius:12px;
+  border:1px solid var(--border);
+  font-size:14px;
+  background:#fff;
+}
+
+.list{
+  padding:12px 14px 40px;
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+}
+
+.card{
+  background:var(--card);
+  border-radius:16px;
+  padding:14px;
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+}
+.meta{
+  display:flex;
+  gap:8px;
+  flex-wrap:wrap;
+  font-size:12px;
+  color:var(--muted);
+}
+.badge{
+  background:#fff;
+  border:1px solid var(--border);
+  border-radius:999px;
+  padding:3px 10px;
+}
+.name{
+  font-size:18px;
+  font-weight:800;
+}
+.note{
+  font-size:13px;
+  color:var(--muted);
+  line-height:1.35;
+}
+
+.row{
+  display:flex;
+  gap:10px;
+}
+.a{
+  flex:1;
+  text-decoration:none;
+  color:inherit;
+}
+.navBtn{
+  width:92px;
+  text-align:center;
+  background:#111827;
+  color:#fff;
+  border-radius:14px;
+  padding:12px 10px;
+  font-weight:800;
+  border:none;
+}
+.dim{ opacity:0.6; }

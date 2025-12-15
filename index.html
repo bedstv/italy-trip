@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>義大利行程</title>
+  <link rel="manifest" href="./manifest.json">
+  <link rel="stylesheet" href="./style.css" />
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+</head>
+<body>
+  <header class="topbar">
+    <div class="title">
+      <div class="h1">義大利行程</div>
+      <div class="sub" id="status">載入中…</div>
+    </div>
+
+    <div class="actions">
+      <button id="reloadBtn" class="btn">重新載入</button>
+      <label class="fileBtn btn">
+        以檔案開啟
+        <input id="fileInput" type="file" accept=".xlsx" hidden>
+      </label>
+    </div>
+  </header>
+
+  <section class="filters">
+    <select id="dateSel"></select>
+    <select id="citySel"></select>
+    <select id="typeSel"></select>
+    <select id="prioSel">
+      <option value="">全部（必去+備選）</option>
+      <option value="必去">只看必去</option>
+      <option value="備選">只看備選</option>
+    </select>
+  </section>
+
+  <main id="list" class="list"></main>
+
+  <!-- SheetJS (xlsx) -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <script src="./app.js"></script>
+  <script>
+    if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js');
+  </script>
+</body>
+</html>
