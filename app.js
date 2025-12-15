@@ -96,7 +96,7 @@ function loadFromJsonp(url) {
       }
     };
 
-    script.src = `${url}?callback=${cbName}`;
+    script.src = `${url}?callback=${cbName}&t=${Date.now()}`;
     script.async = true;
     script.onerror = () => {
       delete window[cbName];
