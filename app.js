@@ -1,7 +1,6 @@
 const SHEET_NAME = "行程清單（iPhone）";   // 你的 Excel 工作表名稱
 const DEFAULT_XLSX_URL =
-  "https://docs.google.com/spreadsheets/d/1D5h99g7ajUQoRm-YzFRneb9rcm7FcFAv/export?format=xlsx
-";
+  "https://docs.google.com/spreadsheets/d/1D5h99g7ajUQoRm-YzFRneb9rcm7FcFAv/export?format=xlsx";
 
 const statusEl = document.getElementById("status");
 const listEl = document.getElementById("list");
