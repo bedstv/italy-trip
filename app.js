@@ -442,7 +442,7 @@ listEl.addEventListener("click", async (ev) => {
     const status = card.querySelector(".saveStatus");
 
     // 若缺行程ID欄位，仍可能寫回失敗（因為 Sheet 端找不到）
-    if (!cols["行程ID"]) {
+    if (cols["行程ID"] === undefined) {
       status.textContent = "❌ 缺少行程ID欄位，請先匯入 writeback 版表格";
       return;
     }
