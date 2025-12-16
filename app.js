@@ -2,7 +2,7 @@
  * 設定
  ***********************/
 const EXEC_URL =
-  "https://script.google.com/macros/s/AKfycbyFxx2xiMt0faQspywmZqXYaAXQOzVkgsxSoJf_ym8frJudlNBos0AENvJ7kzyjnbz2/exec";
+  "https://script.google.com/macros/s/AKfycbwFakEHKe3SGi27suaa19pmnr-y8AMXw8Nidb4mEVRmWKYafuS6tBgpjv1GmKV5xf7A/exec";
 
 // ⚠️ 要跟 Apps Script 的 API_KEY 一樣
 const API_KEY = "Italy-Trip-Is-Good";
