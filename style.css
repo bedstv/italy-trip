@@ -157,3 +157,87 @@ select{
   align-items:center;
   justify-content:center;
 }
+.editWrap { margin-top: 10px; }
+.editToggle{
+  border:1px solid var(--border);
+  background:#fff;
+  padding:10px 12px;
+  border-radius:12px;
+  font-size:14px;
+}
+.editBox{
+  margin-top:10px;
+  background:#fff;
+  border:1px solid var(--border);
+  border-radius:14px;
+  padding:12px;
+}
+.editRow{ display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin:8px 0; }
+.editRow label{ font-size:13px; color:var(--muted); min-width:48px; }
+.editNote{
+  width:100%;
+  border:1px solid var(--border);
+  border-radius:12px;
+  padding:10px;
+  font-size:14px;
+}
+.editRow select{
+  border:1px solid var(--border);
+  border-radius:12px;
+  padding:10px;
+  font-size:14px;
+  background:#fff;
+}
+.saveBtn{
+  background:#111827;
+  color:#fff;
+  border:none;
+  padding:10px 14px;
+  border-radius:12px;
+  font-weight:900;
+}
+.saveStatus{ font-size:12px; color:var(--muted); }
+.editHint{ margin-top:8px; font-size:12px; color:var(--muted); }
+.mono{ font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+.editWrap { margin-top: 10px; }
+.editToggle{
+  border:1px solid var(--border);
+  background:#fff;
+  padding:10px 12px;
+  border-radius:12px;
+  font-size:14px;
+}
+.editBox{
+  margin-top:10px;
+  background:#fff;
+  border:1px solid var(--border);
+  border-radius:14px;
+  padding:12px;
+}
+.editRow{ display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin:8px 0; }
+.editRow label{ font-size:13px; color:var(--muted); min-width:48px; }
+.editNote{
+  width:100%;
+  border:1px solid var(--border);
+  border-radius:12px;
+  padding:10px;
+  font-size:14px;
+}
+.editRow select{
+  border:1px solid var(--border);
+  border-radius:12px;
+  padding:10px;
+  font-size:14px;
+  background:#fff;
+}
+.saveBtn{
+  background:#111827;
+  color:#fff;
+  border:none;
+  padding:10px 14px;
+  border-radius:12px;
+  font-weight:900;
+}
+.saveStatus{ font-size:12px; color:var(--muted); }
+.editHint{ margin-top:8px; font-size:12px; color:var(--muted); }
+.mono{ font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
