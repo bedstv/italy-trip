@@ -1,7 +1,14 @@
+// === 資料來源：你的 Apps Script Web App（exec） ===
 const DEFAULT_XLSX_URL =
-  "https://script.google.com/macros/s/AKfycbyOjHro8rmVfn9Dz3A-n_LK9V1dxtG8-WCqAO9rZ0nQJwxSU-uybzyV3rJ8ttuX5snc/exec";
+  "https://script.google.com/macros/s/AKfycbxdyfunljbtzoJKdUGHGIH5f0RSGn-5l--gJRbSvBcXigcVzRB9uDZGHfbFir1sOx2y/exec";
 
+// Excel 工作表名稱（找不到會自動用第一張）
 const SHEET_NAME = "行程清單（iPhone）";
+
+// === 離線快取 key ===
+const LS_OK = "trip_cache_ok";
+const LS_B64 = "trip_cache_b64";
+const LS_TIME = "trip_cache_time";
 
 const statusEl = document.getElementById("status");
 const listEl = document.getElementById("list");
@@ -74,6 +81,12 @@ function buildOptions(select, values, placeholder){
   }
 }
 
+function formatIsoToLocal(iso){
+  if (!iso) return "";
+  // 只做簡單顯示：YYYY-MM-DD HH:MM
+  return iso.replace("T"," ").slice(0,16);
+}
+
 // Base64 → ArrayBuffer
 function base64ToArrayBuffer(b64){
   const binary = atob(b64);
@@ -81,6 +94,20 @@ function base64ToArrayBuffer(b64){
   const bytes = new Uint8Array(len);
   for (let i=0;i<len;i++) bytes[i] = binary.charCodeAt(i);
   return bytes.buffer;
+}
+
+// 讀取離線快取
+async function tryLoadFromLocalCache(){
+  if (localStorage.getItem(LS_OK) !== "1") return false;
+  const b64 = localStorage.getItem(LS_B64);
+  const t = localStorage.getItem(LS_TIME);
+  if (!b64) return false;
+
+  const buf = base64ToArrayBuffer(b64);
+  await loadWorkbookArrayBuffer(buf);
+
+  statusEl.textContent = `⚠️ 離線模式｜最後更新：${formatIsoToLocal(t) || "未知"}`;
+  return true;
 }
 
 // JSONP loader (避開 CORS)
@@ -97,22 +124,40 @@ function loadFromJsonp(url){
         script.remove();
 
         if (!payload || !payload.b64) throw new Error("Proxy 回傳格式錯誤（缺 b64）");
+
+        // ✅ 解析 Excel
         const buf = base64ToArrayBuffer(payload.b64);
         statusEl.textContent = "解析 Excel 中…";
         await loadWorkbookArrayBuffer(buf);
+
+        // ✅ A：存離線備援（最後一次成功）
+        localStorage.setItem(LS_OK, "1");
+        localStorage.setItem(LS_B64, payload.b64);
+        localStorage.setItem(LS_TIME, payload.generated_at || "");
+
+        // ✅ C：顯示最後更新時間
+        statusEl.textContent = `已載入（線上）｜最後更新：${formatIsoToLocal(payload.generated_at) || "未知"}`;
+
         resolve();
       }catch(e){
         reject(e);
       }
     };
 
-    // ✅ 重要：加 t=Date.now() 避免 script 被快取
+    // ✅ 重要：加上 t=Date.now() 避免 script 被快取
     script.src = `${url}?callback=${cbName}&t=${Date.now()}`;
     script.async = true;
-    script.onerror = () => {
+    script.onerror = async () => {
       delete window[cbName];
       script.remove();
-      reject(new Error("JSONP 載入失敗（部署/權限/網址）"));
+
+      // ✅ A：線上失敗 → 嘗試離線
+      try{
+        const ok = await tryLoadFromLocalCache();
+        if (ok) return resolve();
+      }catch(_){}
+
+      reject(new Error("載入失敗：線上不可用且沒有離線快取"));
     };
 
     document.body.appendChild(script);
@@ -120,6 +165,14 @@ function loadFromJsonp(url){
 }
 
 // -------------------- render --------------------
+function ensureMapsLink(link, placeText){
+  // ✅ B：沒填連結 → 用地點文字自動生成 maps search link
+  if (link) return link;
+  const q = toStr(placeText);
+  if (!q) return "";
+  return "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(q);
+}
+
 function render(){
   const dateV = dateSel.value;
   const cityV = citySel.value;
@@ -127,7 +180,6 @@ function render(){
   const prioV = prioSel.value;
 
   const today = todayStrLocal();
-
   let rows = allRows.slice();
 
   // 模式：今天 / 全部
@@ -145,7 +197,7 @@ function render(){
   if (typeV) rows = rows.filter(r => rowValue(r,"項目類型") === typeV);
   if (prioV) rows = rows.filter(r => rowValue(r,"必去/備選") === prioV);
 
-  // 搜尋（名稱/地點文字/備註/城市）
+  // 搜尋（名稱/地點文字/備註/城市/類型）
   if (q) {
     const qq = q.toLowerCase();
     rows = rows.filter(r => {
@@ -160,7 +212,7 @@ function render(){
     });
   }
 
-  // 排序：日期 → 順序 → 建議時段（有就用） → 名稱
+  // 排序：日期 → 順序 → 建議時段 → 名稱
   rows.sort((a,b) => {
     const da = rowValue(a,"日期");
     const db = rowValue(b,"日期");
@@ -189,16 +241,19 @@ function render(){
     const type = rowValue(r,"項目類型");
     const prio = rowValue(r,"必去/備選");
     const name = rowValue(r,"名稱");
-    const link = rowValue(r,"Google Maps 連結");
+
+    const rawLink = rowValue(r,"Google Maps 連結");
+    const place = rowValue(r,"地點文字");
+    const link = ensureMapsLink(rawLink, place);
+
     const time = rowValue(r,"建議時段");
     const note = rowValue(r,"備註");
 
-    // 新欄位（可有可無）
+    // 加分欄位（可有可無）
     const order = rowValue(r,"順序");
     const stay = rowValue(r,"停留(分)");
     const ticket = rowValue(r,"票務");
     const book = rowValue(r,"訂位");
-    const place = rowValue(r,"地點文字");
 
     const card = document.createElement("div");
     card.className = "card" + (prio === "備選" ? " dim" : "");
@@ -209,6 +264,7 @@ function render(){
       <span class="badge">${date || "-"}</span>
       <span class="badge">${city || "-"}</span>
       <span class="badge">${type || "-"}</span>
+      ${prio ? `<span class="badge">${prio}</span>` : ""}
       ${time ? `<span class="badge">${time}</span>` : ""}
       ${order ? `<span class="badge">#${order}</span>` : ""}
       ${stay ? `<span class="badge">${stay}分</span>` : ""}
@@ -263,8 +319,8 @@ async function loadWorkbookArrayBuffer(buf){
   cols = {};
   header.forEach((h,i)=>{ cols[h]=i; });
 
-  // 必要欄位（其他欄位都是加分）
-  const required = ["日期","城市","項目類型","必去/備選","名稱","Google Maps 連結"];
+  // 必要欄位（其他都是加分）
+  const required = ["日期","城市","項目類型","必去/備選","名稱"];
   const missing = required.filter(k => cols[k] === undefined);
   if (missing.length){
     throw new Error(`缺少欄位：${missing.join("、")}（請確認標題列一致）`);
@@ -283,13 +339,12 @@ async function loadWorkbookArrayBuffer(buf){
   buildOptions(typeSel, types, "選類型（全部）");
   buildOptions(prioSel, prios, "全部（必去+備選）");
 
-  // 模式預設：如果今天在資料裡，預設 today；否則 all
+  // 模式預設：今天若存在 → today；否則 all
   const today = todayStrLocal();
   mode = dates.includes(today) ? "today" : "all";
   chipSet(modeTodayBtn, mode==="today");
   chipSet(modeAllBtn, mode==="all");
 
-  statusEl.textContent = `已載入：${sheetName}（${allRows.length} 筆）`;
   render();
 }
 
@@ -299,6 +354,8 @@ async function loadFromUrl(url, bustCache=false){
       await loadFromJsonp(url);
       return;
     }
+
+    // 其他來源（保留備用）
     statusEl.textContent = "下載 Excel 中…";
     const u = bustCache ? `${url}?v=${Date.now()}` : url;
     const res = await fetch(u);
@@ -306,7 +363,15 @@ async function loadFromUrl(url, bustCache=false){
     const buf = await res.arrayBuffer();
     statusEl.textContent = "解析 Excel 中…";
     await loadWorkbookArrayBuffer(buf);
+
+    statusEl.textContent = "已載入（線上）";
   }catch(err){
+    // ✅ 線上失敗 → 嘗試離線
+    try{
+      const ok = await tryLoadFromLocalCache();
+      if (ok) return;
+    }catch(_){}
+
     statusEl.textContent = `載入失敗：${err.message}`;
     listEl.innerHTML = `<div class="sub">${err.message}</div>`;
   }
@@ -318,6 +383,12 @@ async function loadFromFile(file){
     const buf = await file.arrayBuffer();
     statusEl.textContent = "解析 Excel 中…";
     await loadWorkbookArrayBuffer(buf);
+
+    // 用檔案開啟也存一份離線備援（但沒有 generated_at）
+    localStorage.setItem(LS_OK, "1");
+    localStorage.setItem(LS_B64, ""); // 不存檔案 base64（避免太大），留空
+    localStorage.setItem(LS_TIME, new Date().toISOString());
+    statusEl.textContent = `已載入（本機檔案）｜${formatIsoToLocal(localStorage.getItem(LS_TIME))}`;
   }catch(err){
     statusEl.textContent = `載入失敗：${err.message}`;
     listEl.innerHTML = `<div class="sub">${err.message}</div>`;
@@ -358,5 +429,5 @@ for (const sel of [dateSel, citySel, typeSel, prioSel]){
   sel.addEventListener("change", render);
 }
 
-// init
+// init：先試線上；失敗會自動轉離線
 loadFromUrl(DEFAULT_XLSX_URL);
