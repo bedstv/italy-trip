@@ -56,6 +56,15 @@ function normalizeHeader(h){ return String(h || "").trim(); }
 function toStr(v){ return (v === null || v === undefined) ? "" : String(v).trim(); }
 function uniq(arr){ return [...new Set(arr.filter(Boolean))]; }
 
+function escapeHtml(s){
+  return String(s ?? "")
+    .replace(/&/g,"&amp;")
+    .replace(/</g,"&lt;")
+    .replace(/>/g,"&gt;")
+    .replace(/"/g,"&quot;")
+    .replace(/'/g,"&#39;");
+}
+
 function rowValue(r, key){
   const idx = cols[key];
   if (idx === undefined) return "";
@@ -217,16 +226,38 @@ function ensureMapsLink(link, placeText){
  * 寫回（update）
  * 用 JSONP 避免 CORS
  ***********************/
-async function writeBackUpdate(tripId, note, ticket, booking){
+// ✅ 新版：支援多欄位；也相容舊版 (tripId, note, ticket, booking)
+async function writeBackUpdate(tripId, a, b, c){
   const url = new URL(EXEC_URL);
   url.searchParams.set("action", "update");
   url.searchParams.set("api_key", API_KEY);
   url.searchParams.set("trip_id", tripId);
-  url.searchParams.set("note", note ?? "");
-  url.searchParams.set("ticket", ticket ?? "");
-  url.searchParams.set("booking", booking ?? "");
-  const payload = await jsonp(url.toString());
-  return payload;
+
+  // 相容舊版參數：note/ticket/booking
+  if (typeof a === "string" || typeof a === "number" || a === "" || a === null || a === undefined) {
+    const note = a ?? "";
+    const ticket = b ?? "";
+    const booking = c ?? "";
+    url.searchParams.set("note", note);
+    url.searchParams.set("ticket", ticket);
+    url.searchParams.set("booking", booking);
+  } else {
+    // 新版：a 是 object，key 可用「欄位名」(中文) 或舊 key(note/ticket/booking)
+    const fields = a || {};
+
+    // 舊 key（可選）
+    if (fields.note !== undefined) url.searchParams.set("note", fields.note ?? "");
+    if (fields.ticket !== undefined) url.searchParams.set("ticket", fields.ticket ?? "");
+    if (fields.booking !== undefined) url.searchParams.set("booking", fields.booking ?? "");
+
+    // 新 key：直接用欄位名當 querystring key（後端白名單會擋）
+    for (const [k, v] of Object.entries(fields)) {
+      if (k === "note" || k === "ticket" || k === "booking") continue;
+      url.searchParams.set(k, v ?? "");
+    }
+  }
+
+  return await jsonp(url.toString());
 }
 
 async function addTrip(payload){
@@ -365,6 +396,10 @@ function render(){
     return;
   }
 
+  // ✅ 用現有資料產生下拉選單（城市/類型）
+  const cityOptions = uniq(allRows.map(x => rowValue(x,"城市")));
+  const typeOptions = uniq(allRows.map(x => rowValue(x,"項目類型")));
+
   for (const r of rows){
     const date = rowValue(r,"日期");
     const city = rowValue(r,"城市");
@@ -393,18 +428,18 @@ function render(){
       <div class="row">
         <a class="a" href="${link || "#"}" target="_blank" rel="noopener noreferrer">
           <div class="meta">
-            <span class="badge">${date || "-"}</span>
-            <span class="badge">${city || "-"}</span>
-            <span class="badge">${type || "-"}</span>
-            ${prio ? `<span class="badge">${prio}</span>` : ""}
-            ${time ? `<span class="badge">${time}</span>` : ""}
-            ${order ? `<span class="badge">#${order}</span>` : ""}
-            ${stay ? `<span class="badge">${stay}分</span>` : ""}
-            ${ticket ? `<span class="badge">票務:${ticket}</span>` : ""}
-            ${booking ? `<span class="badge">訂位:${booking}</span>` : ""}
+            <span class="badge">${escapeHtml(date || "-")}</span>
+            <span class="badge">${escapeHtml(city || "-")}</span>
+            <span class="badge">${escapeHtml(type || "-")}</span>
+            ${prio ? `<span class="badge">${escapeHtml(prio)}</span>` : ""}
+            ${time ? `<span class="badge">${escapeHtml(time)}</span>` : ""}
+            ${order ? `<span class="badge">#${escapeHtml(order)}</span>` : ""}
+            ${stay ? `<span class="badge">${escapeHtml(stay)}分</span>` : ""}
+            ${ticket ? `<span class="badge">票務:${escapeHtml(ticket)}</span>` : ""}
+            ${booking ? `<span class="badge">訂位:${escapeHtml(booking)}</span>` : ""}
           </div>
-          <div class="name">${name || "(未命名)"}</div>
-          <div class="note">${(note || place || "")}</div>
+          <div class="name">${escapeHtml(name || "(未命名)")}</div>
+          <div class="note">${escapeHtml((note || place || ""))}</div>
         </a>
 
         <a class="navBtn" href="${link || "#"}" target="_blank" rel="noopener noreferrer"
@@ -415,10 +450,57 @@ function render(){
 
       <div class="editWrap">
         <button class="editToggle">編輯</button>
+
         <div class="editBox" style="display:none;">
+
+          <div class="editRow">
+            <label>日期</label>
+            <input class="editDate" type="date" value="${escapeHtml(date || "")}" />
+
+            <label>城市</label>
+            <select class="editCity">
+              <option value="">--</option>
+              ${cityOptions.map(c => `<option value="${escapeHtml(c)}" ${c===city?"selected":""}>${escapeHtml(c)}</option>`).join("")}
+            </select>
+          </div>
+
+          <div class="editRow">
+            <label>類型</label>
+            <select class="editType">
+              <option value="">--</option>
+              ${typeOptions.map(t => `<option value="${escapeHtml(t)}" ${t===type?"selected":""}>${escapeHtml(t)}</option>`).join("")}
+            </select>
+
+            <label>必去/備選</label>
+            <select class="editPrio">
+              <option value="必去" ${prio==="必去"?"selected":""}>必去</option>
+              <option value="備選" ${prio==="備選"?"selected":""}>備選</option>
+            </select>
+          </div>
+
+          <div class="editRow">
+            <label>名稱</label>
+            <input class="editName" value="${escapeHtml(name || "")}" />
+          </div>
+
+          <div class="editRow">
+            <label>建議時段</label>
+            <input class="editTime" value="${escapeHtml(time || "")}" placeholder="上午 / 下午 / 晚上…" />
+          </div>
+
+          <div class="editRow">
+            <label>地點文字</label>
+            <input class="editPlace" value="${escapeHtml(place || "")}" placeholder="用於 maps 搜尋" />
+          </div>
+
+          <div class="editRow">
+            <label>Google Maps 連結</label>
+            <input class="editMap" value="${escapeHtml(rawLink || "")}" placeholder="https://maps.google.com/..." />
+          </div>
+
           <div class="editRow">
             <label>備註</label>
-            <textarea class="editNote" rows="2" placeholder="輸入備註…">${note || ""}</textarea>
+            <textarea class="editNote" rows="2" placeholder="輸入備註…">${escapeHtml(note || "")}</textarea>
           </div>
 
           <div class="editRow">
@@ -447,7 +529,7 @@ function render(){
           </div>
 
           <div class="editHint">
-            行程ID：<span class="mono">${tripId}</span>
+            行程ID：<span class="mono">${escapeHtml(tripId)}</span>
           </div>
         </div>
       </div>
@@ -476,7 +558,7 @@ listEl.addEventListener("click", async (ev) => {
     return;
   }
 
-    // 刪除（需二次確認）
+  // 刪除（需二次確認）
   if (btn.classList.contains("delBtn")) {
     const tripId = card.dataset.tripId;
     const name = card.querySelector(".name")?.textContent || "";
@@ -501,41 +583,74 @@ listEl.addEventListener("click", async (ev) => {
     return;
   }
 
-  // 儲存
+  // 儲存（✅ 改為多欄位更新）
   if (btn.classList.contains("saveBtn")) {
-    const tripId = card.dataset.tripId;
+    let tripId = card.dataset.tripId; // let：因為可能被 new_trip_id 更新
     const status = card.querySelector(".saveStatus");
 
-    // 若缺行程ID欄位，仍可能寫回失敗（因為 Sheet 端找不到）
     if (cols["行程ID"] === undefined) {
       status.textContent = "❌ 缺少行程ID欄位，請先匯入 writeback 版表格";
       return;
     }
 
-    const note = card.querySelector(".editNote").value || "";
-    const ticket = card.querySelector(".editTicket").value || "";
-    const booking = card.querySelector(".editBooking").value || "";
+    const fields = {
+      "日期": card.querySelector(".editDate")?.value || "",
+      "城市": card.querySelector(".editCity")?.value || "",
+      "項目類型": card.querySelector(".editType")?.value || "",
+      "必去/備選": card.querySelector(".editPrio")?.value || "",
+      "名稱": card.querySelector(".editName")?.value || "",
+      "建議時段": card.querySelector(".editTime")?.value || "",
+      "地點文字": card.querySelector(".editPlace")?.value || "",
+      "Google Maps 連結": card.querySelector(".editMap")?.value || "",
+      "備註": card.querySelector(".editNote")?.value || "",
+      "票務": card.querySelector(".editTicket")?.value || "",
+      "訂位": card.querySelector(".editBooking")?.value || "",
+    };
+
+    if (!fields["日期"] || !fields["城市"] || !fields["名稱"]) {
+      status.textContent = "❌ 日期/城市/名稱 不能為空";
+      return;
+    }
 
     status.textContent = "儲存中…";
     try{
-      const payload = await writeBackUpdate(tripId, note, ticket, booking);
+      const payload = await writeBackUpdate(tripId, fields);
       if (!payload || !payload.ok) {
         status.textContent = `❌ 失敗：${payload?.error || "未知錯誤"}`;
         return;
       }
 
-      // 更新記憶體資料（allRows）讓畫面一致
+      const newTripId = payload.new_trip_id || tripId;
+
+      // ✅ 更新記憶體資料（allRows）
       for (const r of allRows) {
         if (rowValue(r, "行程ID") === tripId) {
-          setRowValue(r, "備註", note);
-          setRowValue(r, "票務", ticket);
-          setRowValue(r, "訂位", booking);
+          setRowValue(r, "日期", fields["日期"]);
+          setRowValue(r, "城市", fields["城市"]);
+          setRowValue(r, "項目類型", fields["項目類型"]);
+          setRowValue(r, "必去/備選", fields["必去/備選"]);
+          setRowValue(r, "名稱", fields["名稱"]);
+          setRowValue(r, "建議時段", fields["建議時段"]);
+          setRowValue(r, "地點文字", fields["地點文字"]);
+          setRowValue(r, "Google Maps 連結", fields["Google Maps 連結"]);
+          setRowValue(r, "備註", fields["備註"]);
+          setRowValue(r, "票務", fields["票務"]);
+          setRowValue(r, "訂位", fields["訂位"]);
+
+          if (newTripId !== tripId) {
+            setRowValue(r, "行程ID", newTripId);
+          }
           break;
         }
       }
 
+      // ✅ dataset 也要同步，否則下一次 update/delete 會用舊 ID
+      if (newTripId !== tripId) {
+        card.dataset.tripId = newTripId;
+        tripId = newTripId;
+      }
+
       status.textContent = `✅ 已儲存 ${formatIso(payload.updated_at)}`;
-      // 重新渲染，讓 badge / note 更新
       render();
 
     }catch(e){
@@ -678,8 +793,8 @@ function openModal(){
 
   const mCity = modalMask.querySelector("#mCity");
   const mType = modalMask.querySelector("#mType");
-  mCity.innerHTML = cities.map(c => `<option value="${c}">${c}</option>`).join("");
-  mType.innerHTML = types.map(t => `<option value="${t}">${t}</option>`).join("");
+  mCity.innerHTML = cities.map(c => `<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`).join("");
+  mType.innerHTML = types.map(t => `<option value="${escapeHtml(t)}">${escapeHtml(t)}</option>`).join("");
 
   // 日期預設今天
   modalMask.querySelector("#mDate").value = todayStrLocal();
