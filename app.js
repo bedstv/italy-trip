@@ -229,6 +229,37 @@ async function writeBackUpdate(tripId, note, ticket, booking){
   return payload;
 }
 
+async function addTrip(payload){
+  const url = new URL(EXEC_URL);
+  url.searchParams.set("action", "add");
+  url.searchParams.set("api_key", API_KEY);
+
+  // 必填
+  url.searchParams.set("date", payload.date);
+  url.searchParams.set("city", payload.city);
+  url.searchParams.set("type", payload.type);
+  url.searchParams.set("prio", payload.prio);
+  url.searchParams.set("name", payload.name);
+
+  // 選填
+  if (payload.time) url.searchParams.set("time", payload.time);
+  if (payload.place) url.searchParams.set("place", payload.place);
+  if (payload.map) url.searchParams.set("map", payload.map);
+  if (payload.note) url.searchParams.set("note", payload.note);
+  if (payload.ticket) url.searchParams.set("ticket", payload.ticket);
+  if (payload.booking) url.searchParams.set("booking", payload.booking);
+
+  return await jsonp(url.toString());
+}
+
+async function deleteTrip(tripId){
+  const url = new URL(EXEC_URL);
+  url.searchParams.set("action", "delete");
+  url.searchParams.set("api_key", API_KEY);
+  url.searchParams.set("trip_id", tripId);
+  return await jsonp(url.toString());
+}
+
 /***********************
  * Excel 解析
  ***********************/
@@ -411,6 +442,7 @@ function render(){
 
           <div class="editRow">
             <button class="saveBtn">儲存</button>
+            <button class="delBtn dangerBtn">刪除</button>
             <span class="saveStatus"></span>
           </div>
 
@@ -441,6 +473,31 @@ listEl.addEventListener("click", async (ev) => {
     const isOpen = box.style.display !== "none";
     box.style.display = isOpen ? "none" : "block";
     btn.textContent = isOpen ? "編輯" : "收合";
+    return;
+  }
+
+    // 刪除（需二次確認）
+  if (btn.classList.contains("delBtn")) {
+    const tripId = card.dataset.tripId;
+    const name = card.querySelector(".name")?.textContent || "";
+    const ok = confirm(`確定要刪除這筆行程？\n\n${name}\n${tripId}\n\n（此操作會直接刪除 Google Sheet 該列）`);
+    if (!ok) return;
+
+    const status = card.querySelector(".saveStatus");
+    status.textContent = "刪除中…";
+
+    try{
+      const payload = await deleteTrip(tripId);
+      if (!payload || !payload.ok) {
+        status.textContent = `❌ 刪除失敗：${payload?.error || "未知錯誤"}`;
+        return;
+      }
+
+      status.textContent = "✅ 已刪除，重新載入…";
+      await loadFromExec(true); // 直接重新抓，避免本地狀態不一致
+    }catch(e){
+      status.textContent = `❌ 例外：${e.message}`;
+    }
     return;
   }
 
@@ -521,6 +578,160 @@ searchInput.addEventListener("input", () => {
 for (const sel of [dateSel, citySel, typeSel, prioSel]){
   sel.addEventListener("change", render);
 }
+
+/***********************
+ * 新增行程：彈窗 UI（JS 注入）
+ ***********************/
+const modalMask = document.createElement("div");
+modalMask.className = "modalMask";
+modalMask.innerHTML = `
+  <div class="modal" role="dialog" aria-modal="true">
+    <div class="modalHead">
+      <div class="modalTitle">新增行程</div>
+      <button class="modalClose">關閉</button>
+    </div>
+
+    <div class="modalBody">
+      <div>
+        <label>日期（必填）</label>
+        <input id="mDate" type="date" />
+      </div>
+      <div>
+        <label>城市（必填）</label>
+        <select id="mCity"></select>
+      </div>
+
+      <div>
+        <label>類型（必填）</label>
+        <select id="mType"></select>
+      </div>
+      <div>
+        <label>必去/備選（必填）</label>
+        <select id="mPrio">
+          <option value="必去">必去</option>
+          <option value="備選">備選</option>
+        </select>
+      </div>
+
+      <div class="full">
+        <label>名稱（必填）</label>
+        <input id="mName" placeholder="例如：Colosseum / 某餐廳…" />
+      </div>
+
+      <div>
+        <label>建議時段（選填）</label>
+        <input id="mTime" placeholder="上午 / 下午 / 晚上…" />
+      </div>
+      <div>
+        <label>地點文字（選填）</label>
+        <input id="mPlace" placeholder="地址或店名，用於 maps 搜尋" />
+      </div>
+
+      <div class="full">
+        <label>Google Maps 連結（選填）</label>
+        <input id="mMap" placeholder="https://maps.google.com/..." />
+      </div>
+
+      <div class="full">
+        <label>備註（選填）</label>
+        <textarea id="mNote" rows="2" placeholder="備忘、注意事項…"></textarea>
+      </div>
+
+      <div>
+        <label>票務（選填）</label>
+        <select id="mTicket">
+          <option value="">--</option>
+          <option value="已買">已買</option>
+          <option value="未買">未買</option>
+          <option value="需預約">需預約</option>
+          <option value="現場">現場</option>
+        </select>
+      </div>
+      <div>
+        <label>訂位（選填）</label>
+        <select id="mBooking">
+          <option value="">--</option>
+          <option value="已訂">已訂</option>
+          <option value="需訂">需訂</option>
+          <option value="不用">不用</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="modalFoot">
+      <button class="btn modalCancel">取消</button>
+      <button class="btn btnPrimary modalSubmit">新增</button>
+    </div>
+  </div>
+`;
+document.body.appendChild(modalMask);
+
+const fab = document.createElement("button");
+fab.className = "fabAdd";
+fab.textContent = "＋ 新增";
+document.body.appendChild(fab);
+
+function openModal(){
+  // 用現有資料填 select（城市/類型）
+  const cities = uniq(allRows.map(r => rowValue(r,"城市")));
+  const types = uniq(allRows.map(r => rowValue(r,"項目類型")));
+
+  const mCity = modalMask.querySelector("#mCity");
+  const mType = modalMask.querySelector("#mType");
+  mCity.innerHTML = cities.map(c => `<option value="${c}">${c}</option>`).join("");
+  mType.innerHTML = types.map(t => `<option value="${t}">${t}</option>`).join("");
+
+  // 日期預設今天
+  modalMask.querySelector("#mDate").value = todayStrLocal();
+
+  modalMask.style.display = "flex";
+}
+function closeModal(){
+  modalMask.style.display = "none";
+}
+
+fab.addEventListener("click", openModal);
+modalMask.querySelector(".modalClose").addEventListener("click", closeModal);
+modalMask.querySelector(".modalCancel").addEventListener("click", closeModal);
+modalMask.addEventListener("click", (e) => {
+  if (e.target === modalMask) closeModal();
+});
+
+modalMask.querySelector(".modalSubmit").addEventListener("click", async () => {
+  const payload = {
+    date: modalMask.querySelector("#mDate").value,
+    city: modalMask.querySelector("#mCity").value,
+    type: modalMask.querySelector("#mType").value,
+    prio: modalMask.querySelector("#mPrio").value,
+    name: modalMask.querySelector("#mName").value.trim(),
+    time: modalMask.querySelector("#mTime").value.trim(),
+    place: modalMask.querySelector("#mPlace").value.trim(),
+    map: modalMask.querySelector("#mMap").value.trim(),
+    note: modalMask.querySelector("#mNote").value.trim(),
+    ticket: modalMask.querySelector("#mTicket").value,
+    booking: modalMask.querySelector("#mBooking").value,
+  };
+
+  if (!payload.date || !payload.city || !payload.type || !payload.prio || !payload.name) {
+    alert("請填完必填欄位：日期、城市、類型、必去/備選、名稱");
+    return;
+  }
+
+  try{
+    statusEl.textContent = "新增中…";
+    const res = await addTrip(payload);
+    if (!res || !res.ok) {
+      alert(`新增失敗：${res?.error || "未知錯誤"}`);
+      return;
+    }
+
+    closeModal();
+    statusEl.textContent = "新增成功，重新載入…";
+    await loadFromExec(true); // 重新抓最新資料
+  }catch(e){
+    alert(`新增例外：${e.message}`);
+  }
+});
 
 /***********************
  * init

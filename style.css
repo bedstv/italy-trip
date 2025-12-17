@@ -241,3 +241,79 @@ select{
 .saveStatus{ font-size:12px; color:var(--muted); }
 .editHint{ margin-top:8px; font-size:12px; color:var(--muted); }
 .mono{ font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+
+/* ===== Modal ===== */
+.modalMask{
+  position:fixed; inset:0;
+  background:rgba(0,0,0,.45);
+  display:none;
+  align-items:center; justify-content:center;
+  padding:16px;
+  z-index:9999;
+}
+.modal{
+  width:min(720px, 100%);
+  background:#fff;
+  border:1px solid var(--border);
+  border-radius:18px;
+  padding:14px;
+}
+.modalHead{
+  display:flex; align-items:center; justify-content:space-between;
+  gap:12px; margin-bottom:10px;
+}
+.modalTitle{ font-size:18px; font-weight:900; }
+.modalClose{
+  border:1px solid var(--border);
+  background:#fff;
+  border-radius:12px;
+  padding:8px 10px;
+}
+.modalBody{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:10px;
+}
+.modalBody .full{ grid-column:1 / -1; }
+.modalBody label{ font-size:12px; color:var(--muted); display:block; margin-bottom:6px; }
+.modalBody input, .modalBody select, .modalBody textarea{
+  width:100%;
+  border:1px solid var(--border);
+  border-radius:12px;
+  padding:10px;
+  font-size:14px;
+  background:#fff;
+}
+.modalFoot{
+  display:flex; gap:10px; justify-content:flex-end;
+  margin-top:12px;
+}
+.btn{
+  border:1px solid var(--border);
+  background:#fff;
+  border-radius:12px;
+  padding:10px 14px;
+  font-weight:800;
+}
+.btnPrimary{
+  background:#111827; color:#fff; border:none;
+}
+.fabAdd{
+  position:fixed;
+  right:16px; bottom:16px;
+  z-index:9998;
+  background:#111827; color:#fff;
+  border:none;
+  border-radius:999px;
+  padding:12px 14px;
+  font-weight:900;
+  box-shadow:0 10px 25px rgba(0,0,0,.18);
+}
+.dangerBtn{
+  border:1px solid #ef4444;
+  color:#ef4444;
+  background:#fff;
+  border-radius:12px;
+  padding:10px 12px;
+  font-weight:900;
+}
