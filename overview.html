@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>行程總覽</title>
+
+  <link rel="manifest" href="./manifest.json">
+  <link rel="stylesheet" href="./style.css" />
+
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+</head>
+<body>
+  <header class="topbar">
+    <div class="title">
+      <div class="h1">行程總覽</div>
+      <div class="sub" id="status">載入中…</div>
+    </div>
+
+    <div class="actions">
+      <a class="btn" href="./index.html">清單</a>
+      <button id="reloadBtn" class="btn">重新載入</button>
+    </div>
+  </header>
+
+  <section class="overviewBar">
+    <div class="chips">
+      <button id="mustOnlyBtn" class="chip chipOn">只看必去</button>
+      <button id="todoOnlyBtn" class="chip">只看待辦</button>
+    </div>
+
+    <input id="searchInput" class="search" type="search"
+      placeholder="搜尋：名稱/城市/備註…" autocomplete="off">
+  </section>
+
+  <section class="kpiGrid" id="kpi">
+    <div class="kpiItem"><div class="k">天數</div><div class="v" id="kpiDays">-</div></div>
+    <div class="kpiItem"><div class="k">項目</div><div class="v" id="kpiItems">-</div></div>
+    <div class="kpiItem"><div class="k">必去</div><div class="v" id="kpiMust">-</div></div>
+    <div class="kpiItem"><div class="k">備選</div><div class="v" id="kpiOpt">-</div></div>
+    <div class="kpiItem"><div class="k">票務待辦</div><div class="v" id="kpiTicketTodo">-</div></div>
+    <div class="kpiItem"><div class="k">訂位待辦</div><div class="v" id="kpiBookingTodo">-</div></div>
+  </section>
+
+  <main id="days" class="days"></main>
+
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <script src="./overview.js"></script>
+
+  <script>
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('./sw.js');
+    }
+  </script>
+</body>
+</html>
