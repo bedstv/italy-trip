@@ -97,14 +97,18 @@ function render(){
   kpiBookingTodo.textContent=rows.filter(r=>r.booking==="需訂").length;
 
   daysEl.innerHTML="";
-  days.forEach(d=>{
-    const items=rows.filter(r=>r.date===d);
-    const el=document.createElement("section");
-    el.className="dayCard";
-    el.innerHTML=`
-      <div class="dayHead">
-        <div class="dayTitle">${d}</div>
-      </div>
+
+  days.forEach(date=>{
+    const items=rows.filter(r=>r.date===date);
+
+    const section=document.createElement("section");
+    section.className="dayCard";
+
+    // ---- header ----
+    const header=document.createElement("div");
+    header.className="dayHead";
+    header.innerHTML=`
+      <div class="dayTitle">${date}</div>
       <div class="dayMeta">
         <span>共 ${items.length} 項</span>
         <span>必去 ${items.filter(i=>i.prio==="必去").length}</span>
@@ -113,7 +117,33 @@ function render(){
         </span>
       </div>
     `;
-    daysEl.appendChild(el);
+
+    // ---- items (預設收合) ----
+    const list=document.createElement("div");
+    list.className="dayItems";
+    list.style.display="none";
+
+    list.innerHTML = items.map(i=>`
+      <div class="itemRow">
+        <div class="itemMain">
+          <span class="itemName">${i.name}</span>
+          ${i.prio==="備選" ? `<span class="tag opt">備選</span>` : ""}
+        </div>
+        <div class="itemSub">
+          ${i.city || ""}
+          ${isTodo(i) ? `<span class="warn">待辦</span>` : ""}
+        </div>
+      </div>
+    `).join("");
+
+    // ---- toggle ----
+    header.addEventListener("click",()=>{
+      list.style.display = list.style.display==="none" ? "block" : "none";
+    });
+
+    section.appendChild(header);
+    section.appendChild(list);
+    daysEl.appendChild(section);
   });
 }
 
