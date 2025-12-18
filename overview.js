@@ -83,68 +83,71 @@ function isTodo(x){
 
 /* ========= render ========= */
 function render(){
-  let rows=[...all];
-  if(mustOnly) rows=rows.filter(x=>x.prio==="必去");
-  if(todoOnly) rows=rows.filter(isTodo);
+  let rows = [...all];
+  if (mustOnly) rows = rows.filter(x => x.prio === "必去");
+  if (todoOnly) rows = rows.filter(isTodo);
 
-  const days=[...new Set(rows.map(r=>r.date))];
+  const days = [...new Set(rows.map(r => r.date))];
 
-  kpiDays.textContent=days.length;
-  kpiItems.textContent=rows.length;
-  kpiMust.textContent=rows.filter(r=>r.prio==="必去").length;
-  kpiOpt.textContent=rows.filter(r=>r.prio==="備選").length;
-  kpiTicketTodo.textContent=rows.filter(r=>r.ticket==="未買"||r.ticket==="需預約").length;
-  kpiBookingTodo.textContent=rows.filter(r=>r.booking==="需訂").length;
+  // KPI
+  kpiDays.textContent = days.length;
+  kpiItems.textContent = rows.length;
+  kpiMust.textContent = rows.filter(r => r.prio === "必去").length;
+  kpiOpt.textContent = rows.filter(r => r.prio === "備選").length;
+  kpiTicketTodo.textContent = rows.filter(r => r.ticket === "未買" || r.ticket === "需預約").length;
+  kpiBookingTodo.textContent = rows.filter(r => r.booking === "需訂").length;
 
-  daysEl.innerHTML="";
+  daysEl.innerHTML = "";
 
-  days.forEach(date=>{
-    const items=rows.filter(r=>r.date===date);
+  days.forEach(date => {
+    const items = rows.filter(r => r.date === date);
+    const city = items[0]?.city || "";
 
-    const section=document.createElement("section");
-    section.className="dayCard";
+    const must = items.filter(i => i.prio === "必去");
+    const opt  = items.filter(i => i.prio === "備選");
 
-    // ---- header ----
-    const header=document.createElement("div");
-    header.className="dayHead";
-    header.innerHTML=`
-      <div class="dayTitle">${date}</div>
-      <div class="dayMeta">
-        <span>共 ${items.length} 項</span>
-        <span>必去 ${items.filter(i=>i.prio==="必去").length}</span>
-        <span class="${items.filter(isTodo).length?"warn":""}">
-          待辦 ${items.filter(isTodo).length}
-        </span>
+    const card = document.createElement("section");
+    card.className = "dayCardReadable";
+
+    card.innerHTML = `
+      <div class="dayHeader">
+        <div class="dayDate">${date}</div>
+        <div class="dayCity">${city}</div>
       </div>
+
+      <div class="block must">
+        <div class="blockTitle">✅ 必去 (${must.length})</div>
+        ${must.map(i => `
+          <div class="itemRow">
+            <span class="icon">${typeIcon(i.type)}</span>
+            <span class="name">${i.name}</span>
+          </div>
+        `).join("")}
+      </div>
+
+      ${opt.length ? `
+      <div class="block opt">
+        <div class="blockTitle">⭐ 備選 (${opt.length})</div>
+        ${opt.map(i => `
+          <div class="itemRow">
+            <span class="icon">${typeIcon(i.type)}</span>
+            <span class="name">${i.name}</span>
+          </div>
+        `).join("")}
+      </div>
+      ` : ""}
     `;
 
-    // ---- items (預設收合) ----
-    const list=document.createElement("div");
-    list.className="dayItems";
-    list.style.display="none";
-
-    list.innerHTML = items.map(i=>`
-      <div class="itemRow">
-        <div class="itemMain">
-          <span class="itemName">${i.name}</span>
-          ${i.prio==="備選" ? `<span class="tag opt">備選</span>` : ""}
-        </div>
-        <div class="itemSub">
-          ${i.city || ""}
-          ${isTodo(i) ? `<span class="warn">待辦</span>` : ""}
-        </div>
-      </div>
-    `).join("");
-
-    // ---- toggle ----
-    header.addEventListener("click",()=>{
-      list.style.display = list.style.display==="none" ? "block" : "none";
-    });
-
-    section.appendChild(header);
-    section.appendChild(list);
-    daysEl.appendChild(section);
+    daysEl.appendChild(card);
   });
+}
+
+/* icon helper */
+function typeIcon(type=""){
+  if (type.includes("餐")) return "🍽";
+  if (type.includes("住")) return "🏠";
+  if (type.includes("車") || type.includes("站")) return "🚉";
+  return "🏛";
 }
 
 /* ========= UI ========= */
