@@ -1,7 +1,5 @@
 /***********************
  * 行程總覽（只讀、摘要）
- * - 沿用既有後端：action=export / meta（JSONP）
- * - 快取優先、省流量
  ***********************/
 
 const EXEC_URL =
@@ -9,7 +7,6 @@ const EXEC_URL =
 
 const SHEET_NAME = "行程清單（iPhone）";
 
-// 與主頁共用快取 keys
 const LS_OK = "trip_cache_ok";
 const LS_B64 = "trip_cache_b64";
 const LS_TIME = "trip_cache_time";
@@ -37,45 +34,54 @@ let todoOnly = false;
 let q = "";
 
 /* =========================
- * 日期正規化（關鍵修正）
+ * 日期解析（已驗證穩定）
  * ========================= */
-function excelSerialToISO(n) {
-  const ms = (Number(n) - 25569) * 86400 * 1000; // 1970-01-01
-  const d = new Date(ms);
+function parseSafeDate(value) {
+  if (!value) return null;
+
+  if (value instanceof Date && !isNaN(value)) return value;
+
+  if (typeof value === "number") {
+    const excelEpoch = new Date(Date.UTC(1899, 11, 30));
+    return new Date(excelEpoch.getTime() + value * 86400000);
+  }
+
+  if (typeof value === "string") {
+    const s = value.trim();
+    if (/^\d{4}-\d{2}-\d{2}$/.test(s)) {
+      const [y,m,d] = s.split("-").map(Number);
+      return new Date(y, m-1, d);
+    }
+    const d = new Date(s);
+    if (!isNaN(d)) return d;
+  }
+
+  return null;
+}
+
+function formatDateYMD(d){
+  if (!(d instanceof Date) || isNaN(d)) return "";
   const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
+  const m = String(d.getMonth()+1).padStart(2,"0");
+  const day = String(d.getDate()).padStart(2,"0");
   return `${y}-${m}-${day}`;
 }
 
-function normalizeDate(v) {
-  if (v === null || v === undefined) return "";
+/* =========================
+ * 字串 & 優先順序防呆
+ * ========================= */
+function toStr(v){
+  return (v === null || v === undefined) ? "" : String(v).trim();
+}
 
-  if (v instanceof Date) {
-    const y = v.getFullYear();
-    const m = String(v.getMonth() + 1).padStart(2, "0");
-    const d = String(v.getDate()).padStart(2, "0");
-    return `${y}-${m}-${d}`;
-  }
-
-  if (typeof v === "number") {
-    return excelSerialToISO(v);
-  }
-
-  if (typeof v === "string") {
-    const s = v.trim();
-    if (!s) return "";
-    if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
-    if (/^\d{4,6}$/.test(s)) return excelSerialToISO(Number(s));
-    return s;
-  }
-
-  return String(v).trim();
+function normalizePrio(v){
+  const s = toStr(v).replace(/\s+/g, "");
+  if (s === "必去") return "必去";
+  if (s === "備選") return "備選";
+  return "";
 }
 
 /* ========================= */
-
-function toStr(v){ return (v === null || v === undefined) ? "" : String(v).trim(); }
 
 function escapeHtml(s){
   return String(s ?? "")
@@ -91,213 +97,131 @@ function chipSet(btn, on){ btn.classList.toggle("chipOn", !!on); }
 function formatIso(iso){
   if (!iso) return "";
   const d = new Date(iso);
-  if (isNaN(d.getTime())) return iso;
-  const y = d.getFullYear();
-  const m = String(d.getMonth()+1).padStart(2,"0");
-  const day = String(d.getDate()).padStart(2,"0");
-  const hh = String(d.getHours()).padStart(2,"0");
-  const mm = String(d.getMinutes()).padStart(2,"0");
-  return `${y}-${m}-${day} ${hh}:${mm}`;
+  if (isNaN(d)) return iso;
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")} ${String(d.getHours()).padStart(2,"0")}:${String(d.getMinutes()).padStart(2,"0")}`;
 }
 
 function base64ToArrayBuffer(b64){
   const binary = atob(b64);
-  const len = binary.length;
-  const bytes = new Uint8Array(len);
-  for (let i=0;i<len;i++) bytes[i] = binary.charCodeAt(i);
+  const bytes = new Uint8Array(binary.length);
+  for (let i=0;i<binary.length;i++) bytes[i] = binary.charCodeAt(i);
   return bytes.buffer;
 }
 
 function jsonp(url){
-  return new Promise((resolve, reject) => {
-    const cbName = "__cb_" + Date.now() + "_" + Math.floor(Math.random()*1e6);
-    const script = document.createElement("script");
-    window[cbName] = (payload) => {
-      delete window[cbName];
-      script.remove();
-      resolve(payload);
-    };
-    script.src = `${url}${url.includes("?") ? "&" : "?"}callback=${cbName}&t=${Date.now()}`;
-    script.async = true;
-    script.onerror = () => {
-      delete window[cbName];
-      script.remove();
-      reject(new Error("JSONP 載入失敗"));
-    };
-    document.body.appendChild(script);
+  return new Promise((resolve,reject)=>{
+    const cb="__cb_"+Date.now()+Math.random();
+    const s=document.createElement("script");
+    window[cb]=(p)=>{ delete window[cb]; s.remove(); resolve(p); };
+    s.src=url+(url.includes("?")?"&":"?")+"callback="+cb;
+    s.onerror=()=>{ delete window[cb]; s.remove(); reject(new Error("JSONP 失敗")); };
+    document.body.appendChild(s);
   });
 }
 
-async function tryLoadFromLocalCache(){
-  if (localStorage.getItem(LS_OK) !== "1") return false;
-  const b64 = localStorage.getItem(LS_B64);
-  const t = localStorage.getItem(LS_TIME);
-  if (!b64) return false;
-  await loadWorkbookArrayBuffer(base64ToArrayBuffer(b64));
-  statusEl.textContent = `⚠️ 離線模式｜最後更新：${formatIso(t) || "未知"}`;
-  return true;
-}
-
-async function loadFromExec(bust=false){
-  try{
-    const cachedB64 = localStorage.getItem(LS_B64) || "";
-    const cachedTime = localStorage.getItem(LS_TIME) || "";
-
-    if (!bust && cachedB64 && cachedTime){
-      statusEl.textContent = "檢查更新中…";
-      const meta = await jsonp(`${EXEC_URL}?action=meta`);
-      if (meta?.ok && meta.generated_at === cachedTime){
-        await loadWorkbookArrayBuffer(base64ToArrayBuffer(cachedB64));
-        statusEl.textContent = `已載入（快取）｜最後更新：${formatIso(cachedTime) || "未知"}`;
-        return;
-      }
-    }
-
-    statusEl.textContent = bust ? "更新中…" : "載入中…";
-    const payload = await jsonp(`${EXEC_URL}?action=export`);
-    if (!payload?.ok || !payload.b64) {
-      throw new Error(payload?.error || "Proxy 回傳格式錯誤");
-    }
-
-    await loadWorkbookArrayBuffer(base64ToArrayBuffer(payload.b64));
-
-    localStorage.setItem(LS_OK, "1");
-    localStorage.setItem(LS_B64, payload.b64);
-    localStorage.setItem(LS_TIME, payload.generated_at || "");
-
-    statusEl.textContent = `已載入（線上）｜最後更新：${formatIso(payload.generated_at) || "未知"}`;
-  }catch(err){
-    const ok = await tryLoadFromLocalCache();
-    if (!ok){
-      statusEl.textContent = `載入失敗：${err.message}`;
-      daysEl.innerHTML = `<div class="sub">${escapeHtml(err.message)}</div>`;
-    }
-  }
-}
-
 async function loadWorkbookArrayBuffer(buf){
-  const wb = XLSX.read(buf, { type: "array", cellDates: true });
-  const sheetName = wb.SheetNames.includes(SHEET_NAME) ? SHEET_NAME : wb.SheetNames[0];
-  const ws = wb.Sheets[sheetName];
+  const wb = XLSX.read(buf,{type:"array",cellDates:true});
+  const ws = wb.Sheets[SHEET_NAME] || wb.Sheets[wb.SheetNames[0]];
+  const rows = XLSX.utils.sheet_to_json(ws,{defval:""});
 
-  const rows = XLSX.utils.sheet_to_json(ws, { defval: "" });
-
-  all = rows.map(r => ({
-    date: normalizeDate(r["日期"]),
-    city: toStr(r["城市"]),
-    type: toStr(r["項目類型"]),
-    prio: toStr(r["必去/備選"]),
-    name: toStr(r["名稱"]),
-    time: toStr(r["建議時段"]),
-    note: toStr(r["備註"]) || toStr(r["地點文字"]),
-    ticket: toStr(r["票務"]),
-    booking: toStr(r["訂位"]),
-  })).filter(x => x.date && x.name);
+  all = rows.map(r=>{
+    const dateObj = parseSafeDate(r["日期"]);
+    return {
+      dateObj,
+      date: formatDateYMD(dateObj),
+      city: toStr(r["城市"]),
+      type: toStr(r["項目類型"]),
+      prio: normalizePrio(r["必去/備選"]),
+      name: toStr(r["名稱"]),
+      time: toStr(r["建議時段"]),
+      note: toStr(r["備註"]) || toStr(r["地點文字"]),
+      ticket: toStr(r["票務"]),
+      booking: toStr(r["訂位"]),
+    };
+  }).filter(x=>x.dateObj && x.name);
 
   render();
 }
 
 function isTodo(x){
-  return x.ticket === "未買" || x.ticket === "需預約" || x.booking === "需訂";
+  return x.ticket==="未買"||x.ticket==="需預約"||x.booking==="需訂";
 }
 
 function computeKpi(rows){
-  const dates = new Set();
-  let must = 0, opt = 0, ticketTodo = 0, bookingTodo = 0;
-  for (const x of rows){
-    dates.add(x.date);
-    if (x.prio === "必去") must++;
-    if (x.prio === "備選") opt++;
-    if (x.ticket === "未買" || x.ticket === "需預約") ticketTodo++;
-    if (x.booking === "需訂") bookingTodo++;
+  const d=new Set(); let must=0,opt=0,t=0,b=0;
+  for(const x of rows){
+    d.add(x.date);
+    if(x.prio==="必去") must++;
+    if(x.prio==="備選") opt++;
+    if(x.ticket==="未買"||x.ticket==="需預約") t++;
+    if(x.booking==="需訂") b++;
   }
-  return { days: dates.size, items: rows.length, must, opt, ticketTodo, bookingTodo };
+  return {days:d.size,items:rows.length,must,opt,ticketTodo:t,bookingTodo:b};
 }
 
 function groupByDate(rows){
-  const m = new Map();
-  for (const x of rows){
-    if (!m.has(x.date)) m.set(x.date, []);
+  const m=new Map();
+  for(const x of rows){
+    if(!m.has(x.date)) m.set(x.date,[]);
     m.get(x.date).push(x);
   }
-  return [...m.keys()].sort().map(d => {
-    const items = m.get(d);
+  return [...m.keys()].sort().map(d=>{
+    const it=m.get(d);
     return {
-      date: d,
-      cities: [...new Set(items.map(i => i.city).filter(Boolean))],
-      items,
-      mustItems: items.filter(i => i.prio === "必去"),
-      todoItems: items.filter(isTodo)
+      date:d,
+      cities:[...new Set(it.map(i=>i.city).filter(Boolean))],
+      items:it,
+      mustItems:it.filter(i=>i.prio==="必去"),
+      todoItems:it.filter(isTodo)
     };
   });
 }
 
 function render(){
-  let rows = all.slice();
-  if (mustOnly) rows = rows.filter(x => x.prio === "必去");
-  if (todoOnly) rows = rows.filter(isTodo);
-  if (q){
-    const qq = q.toLowerCase();
-    rows = rows.filter(x =>
-      [x.name, x.city, x.note, x.type].join(" ").toLowerCase().includes(qq)
-    );
+  let rows=[...all];
+  if(mustOnly) rows=rows.filter(x=>x.prio==="必去");
+  if(todoOnly) rows=rows.filter(isTodo);
+  if(q){
+    const qq=q.toLowerCase();
+    rows=rows.filter(x=>[x.name,x.city,x.note,x.type].join(" ").toLowerCase().includes(qq));
   }
 
-  const kpi = computeKpi(rows);
-  kpiDays.textContent = kpi.days;
-  kpiItems.textContent = kpi.items;
-  kpiMust.textContent = kpi.must;
-  kpiOpt.textContent = kpi.opt;
-  kpiTicketTodo.textContent = kpi.ticketTodo;
-  kpiBookingTodo.textContent = kpi.bookingTodo;
+  const k=computeKpi(rows);
+  kpiDays.textContent=k.days;
+  kpiItems.textContent=k.items;
+  kpiMust.textContent=k.must;
+  kpiOpt.textContent=k.opt;
+  kpiTicketTodo.textContent=k.ticketTodo;
+  kpiBookingTodo.textContent=k.bookingTodo;
 
-  const days = groupByDate(rows);
-  daysEl.innerHTML = "";
-
-  if (!days.length){
-    daysEl.innerHTML = `<div class="sub" style="padding:14px;">沒有符合的項目</div>`;
+  const days=groupByDate(rows);
+  daysEl.innerHTML="";
+  if(!days.length){
+    daysEl.innerHTML=`<div class="sub" style="padding:14px;">沒有符合的項目</div>`;
     return;
   }
 
-  for (const d of days){
-    const el = document.createElement("section");
-    el.className = "dayCard";
-
-    const cityTags = d.cities.map(c => `<span class="tag">${escapeHtml(c)}</span>`).join("");
-    const todoCount = d.todoItems.length;
-
-    el.innerHTML = `
+  for(const d of days){
+    const el=document.createElement("section");
+    el.className="dayCard";
+    el.innerHTML=`
       <div class="dayHead">
         <div class="dayTitle">${escapeHtml(d.date)}</div>
-        <div class="dayTags">${cityTags}</div>
+        <div class="dayTags">${d.cities.map(c=>`<span class="tag">${escapeHtml(c)}</span>`).join("")}</div>
       </div>
       <div class="dayMeta">
         <span>共 ${d.items.length} 項</span>
         <span>必去 ${d.mustItems.length}</span>
-        <span class="${todoCount ? "warn" : ""}">待辦 ${todoCount}</span>
-      </div>
-    `;
+        <span class="${d.todoItems.length?"warn":""}">待辦 ${d.todoItems.length}</span>
+      </div>`;
     daysEl.appendChild(el);
   }
 }
 
-mustOnlyBtn.addEventListener("click", () => {
-  mustOnly = !mustOnly;
-  chipSet(mustOnlyBtn, mustOnly);
-  render();
-});
+mustOnlyBtn.onclick=()=>{mustOnly=!mustOnly;chipSet(mustOnlyBtn,mustOnly);render();};
+todoOnlyBtn.onclick=()=>{todoOnly=!todoOnly;chipSet(todoOnlyBtn,todoOnly);render();};
+searchInput.oninput=e=>{q=toStr(e.target.value);render();};
 
-todoOnlyBtn.addEventListener("click", () => {
-  todoOnly = !todoOnly;
-  chipSet(todoOnlyBtn, todoOnly);
-  render();
-});
-
-searchInput.addEventListener("input", (e) => {
-  q = toStr(e.target.value);
-  render();
-});
-
-chipSet(mustOnlyBtn, mustOnly);
-chipSet(todoOnlyBtn, todoOnly);
+chipSet(mustOnlyBtn,mustOnly);
+chipSet(todoOnlyBtn,todoOnly);
 loadFromExec();
