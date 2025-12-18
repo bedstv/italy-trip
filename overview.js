@@ -119,6 +119,53 @@ function jsonp(url){
   });
 }
 
+async function tryLoadFromLocalCache(){
+  if (localStorage.getItem(LS_OK) !== "1") return false;
+  const b64 = localStorage.getItem(LS_B64);
+  const t = localStorage.getItem(LS_TIME);
+  if (!b64) return false;
+  await loadWorkbookArrayBuffer(base64ToArrayBuffer(b64));
+  statusEl.textContent = `⚠️ 離線模式｜最後更新：${formatIso(t) || "未知"}`;
+  return true;
+}
+
+async function loadFromExec(bust=false){
+  try{
+    const cachedB64 = localStorage.getItem(LS_B64) || "";
+    const cachedTime = localStorage.getItem(LS_TIME) || "";
+
+    if (!bust && cachedB64 && cachedTime){
+      statusEl.textContent = "檢查更新中…";
+      const meta = await jsonp(`${EXEC_URL}?action=meta`);
+      if (meta?.ok && meta.generated_at === cachedTime){
+        await loadWorkbookArrayBuffer(base64ToArrayBuffer(cachedB64));
+        statusEl.textContent = `已載入（快取）｜最後更新：${formatIso(cachedTime) || "未知"}`;
+        return;
+      }
+    }
+
+    statusEl.textContent = bust ? "更新中…" : "載入中…";
+    const payload = await jsonp(`${EXEC_URL}?action=export`);
+    if (!payload?.ok || !payload.b64) {
+      throw new Error(payload?.error || "Proxy 回傳格式錯誤");
+    }
+
+    await loadWorkbookArrayBuffer(base64ToArrayBuffer(payload.b64));
+
+    localStorage.setItem(LS_OK, "1");
+    localStorage.setItem(LS_B64, payload.b64);
+    localStorage.setItem(LS_TIME, payload.generated_at || "");
+
+    statusEl.textContent = `已載入（線上）｜最後更新：${formatIso(payload.generated_at) || "未知"}`;
+  }catch(err){
+    const ok = await tryLoadFromLocalCache();
+    if (!ok){
+      statusEl.textContent = `載入失敗：${err.message}`;
+      daysEl.innerHTML = `<div class="sub">${escapeHtml(err.message)}</div>`;
+    }
+  }
+}
+
 async function loadWorkbookArrayBuffer(buf){
   const wb = XLSX.read(buf,{type:"array",cellDates:true});
   const ws = wb.Sheets[SHEET_NAME] || wb.Sheets[wb.SheetNames[0]];
