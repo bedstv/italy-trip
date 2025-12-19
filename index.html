@@ -28,28 +28,37 @@
     </div>
   </header>
 
-  <!-- Top3：快速操作列 -->
   <section class="quickbar">
     <div class="chips">
       <button id="modeTodayBtn" class="chip chipOn">今天</button>
       <button id="modeAllBtn" class="chip">全部</button>
+
       <button id="toggleMustBtn" class="chip chipOn">只看必去</button>
       <button id="toggleOptBtn" class="chip">顯示備選</button>
+      <button id="toggleTodoBtn" class="chip">只看待辦</button>
+
+      <button id="toggleFiltersBtn" class="chip">進階篩選</button>
     </div>
 
     <input id="searchInput" class="search" type="search"
-      placeholder="搜尋：景點/餐廳/城市/地點…" autocomplete="off">
+      placeholder="搜尋：名稱/城市/類型/備註/地點…" autocomplete="off">
   </section>
 
-  <!-- 進階篩選：保留（需要時才用） -->
-  <section class="filters">
+  <section class="kpiGrid" id="kpi">
+    <div class="kpiItem"><div class="k">天數</div><div class="v" id="kpiDays">-</div></div>
+    <div class="kpiItem"><div class="k">項目</div><div class="v" id="kpiItems">-</div></div>
+    <div class="kpiItem"><div class="k">票務待辦</div><div class="v" id="kpiTicketTodo">-</div></div>
+    <div class="kpiItem"><div class="k">訂位待辦</div><div class="v" id="kpiBookingTodo">-</div></div>
+  </section>
+
+  <section class="filters filtersCollapsed" id="filtersBox">
     <select id="dateSel"></select>
     <select id="citySel"></select>
     <select id="typeSel"></select>
     <select id="prioSel"></select>
   </section>
 
-  <main id="list" class="list"></main>
+  <main id="list" class="list dayList"></main>
 
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <script src="./app.js"></script>
