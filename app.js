@@ -607,8 +607,8 @@ listEl.addEventListener("click", async (ev) => {
       "訂位": card.querySelector(".editBooking")?.value || "",
     };
 
-    if (!fields["日期"] || !fields["城市"] || !fields["名稱"]) {
-      status.textContent = "❌ 日期/城市/名稱 不能為空";
+    if (!fields["城市"] || !fields["名稱"]) {
+      status.textContent = "❌ 城市/名稱 不能為空";
       return;
     }
 

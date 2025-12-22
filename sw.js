@@ -1,12 +1,19 @@
-const CACHE = "italy-trip-v19";
+const CACHE = "italy-trip-v20";
 
 const ASSETS = [
   "./",
   "./index.html",
   "./overview.html",
+  "./places.html",
+  "./transport.html",
+  "./memo.html",
   "./style.css",
   "./app.js",
   "./overview.js",
+  "./lib.js",
+  "./places.js",
+  "./transport.js",
+  "./memo.js",
   "./manifest.json"
 ];
 

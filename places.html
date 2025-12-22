@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>義大利行程</title>
+  <title>景點清單（地點為主）</title>
 
   <link rel="manifest" href="./manifest.json">
   <link rel="stylesheet" href="./style.css" />
@@ -14,7 +14,7 @@
 <body>
   <header class="topbar">
     <div class="title">
-      <div class="h1">義大利行程</div>
+      <div class="h1">景點清單</div>
       <div class="sub" id="status">載入中…</div>
     </div>
 
@@ -25,38 +25,29 @@
       <a class="btn" href="./transport.html">交通</a>
       <a class="btn" href="./memo.html">備忘</a>
       <button id="reloadBtn" class="btn">重新載入</button>
-      <label class="fileBtn btn">
-        以檔案開啟
-        <input id="fileInput" type="file" accept=".xlsx" hidden>
-      </label>
     </div>
   </header>
 
-  <!-- Top3：快速操作列 -->
   <section class="quickbar">
     <div class="chips">
-      <button id="modeTodayBtn" class="chip chipOn">今天</button>
-      <button id="modeAllBtn" class="chip">全部</button>
-      <button id="toggleMustBtn" class="chip chipOn">只看必去</button>
-      <button id="toggleOptBtn" class="chip">顯示備選</button>
+      <button id="showUnscheduledBtn" class="chip chipOn">未排日期</button>
+      <button id="showScheduledBtn" class="chip chipOn">已排日期</button>
+      <button id="mustOnlyBtn" class="chip">只看必去</button>
     </div>
 
-    <input id="searchInput" class="search" type="search"
-      placeholder="搜尋：景點/餐廳/城市/地點…" autocomplete="off">
-  </section>
+    <div class="grid2">
+      <select id="citySel"></select>
+      <select id="typeSel"></select>
+    </div>
 
-  <!-- 進階篩選：保留（需要時才用） -->
-  <section class="filters">
-    <select id="dateSel"></select>
-    <select id="citySel"></select>
-    <select id="typeSel"></select>
-    <select id="prioSel"></select>
+    <input id="searchInput" class="search" type="search" placeholder="搜尋：景點/餐廳/城市/備註…" autocomplete="off">
   </section>
 
   <main id="list" class="list"></main>
 
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-  <script src="./app.js"></script>
+  <script src="./lib.js"></script>
+  <script src="./places.js"></script>
 
   <script>
     if ('serviceWorker' in navigator) {
