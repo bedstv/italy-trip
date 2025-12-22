@@ -7,7 +7,7 @@
  ***********************/
 
 // ✅ 改成你自己的 Apps Script Web App URL
-const EXEC_URL = "https://script.google.com/macros/s/AKfycbyNdMZJDAU_vZLxn4_MC8xauheraJUhHJVwPv5oP8V9L9ow-1WzdgVX-lqD1YuG38I/exec";
+const EXEC_URL = "https://script.google.com/macros/s/AKfycbxMVr13SBFWdJICZNkaceB-pV_ijfaDXwoH_ySMzhTVqqzDD5l6dtLnU0dIVbkSZzb4/exec";
 
 // ✅ 要跟 Apps Script 的 API_KEY 一樣
 const API_KEY = "Italy-Trip-Is-Good";
@@ -107,6 +107,8 @@ async function apiUpdate(tableKey, id, fields){
   url.searchParams.set("api_key", API_KEY);
   url.searchParams.set("table", tableKey);
   url.searchParams.set("id", id);
+  // backward compat: old backend expects trip_id
+  if (tableKey === "trips") url.searchParams.set("trip_id", id);
   for (const [k,v] of Object.entries(fields || {})) {
     url.searchParams.set(k, v ?? "");
   }
@@ -130,6 +132,8 @@ async function apiDelete(tableKey, id){
   url.searchParams.set("api_key", API_KEY);
   url.searchParams.set("table", tableKey);
   url.searchParams.set("id", id);
+  // backward compat: old backend expects trip_id
+  if (tableKey === "trips") url.searchParams.set("trip_id", id);
   return await jsonp(url.toString());
 }
 
