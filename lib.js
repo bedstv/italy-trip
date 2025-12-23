@@ -7,7 +7,7 @@
  ***********************/
 
 // ✅ 改成你自己的 Apps Script Web App URL
-const EXEC_URL = "https://script.google.com/macros/s/AKfycbyNdMZJDAU_vZLxn4_MC8xauheraJUhHJVwPv5oP8V9L9ow-1WzdgVX-lqD1YuG38I/exec";
+const EXEC_URL = "https://script.google.com/macros/s/AKfycbxMVr13SBFWdJICZNkaceB-pV_ijfaDXwoH_ySMzhTVqqzDD5l6dtLnU0dIVbkSZzb4/exec";
 
 // ✅ 要跟 Apps Script 的 API_KEY 一樣
 const API_KEY = "Italy-Trip-Is-Good";
