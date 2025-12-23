@@ -7,7 +7,7 @@
  ***********************/
 
 const EXEC_URL =
-  "https://script.google.com/macros/s/AKfycbxMVr13SBFWdJICZNkaceB-pV_ijfaDXwoH_ySMzhTVqqzDD5l6dtLnU0dIVbkSZzb4/exec";
+  "https://script.google.com/macros/s/AKfycbyNdMZJDAU_vZLxn4_MC8xauheraJUhHJVwPv5oP8V9L9ow-1WzdgVX-lqD1YuG38I/exec";
 const SHEET_NAME = "行程清單（iPhone）";
 
 const LS_KEY_B64 = "italyTrip_overview_b64";
