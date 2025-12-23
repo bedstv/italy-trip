@@ -16,11 +16,24 @@
     return new Promise((resolve, reject) => {
       const cbName = "__cb_" + Date.now() + "_" + Math.floor(Math.random()*1e6);
       const script = document.createElement("script");
+      const TIMEOUT_MS = 15000;
+      let timer = null;
+
+      function cleanup(){
+        if (timer) { clearTimeout(timer); timer = null; }
+        try { delete window[cbName]; } catch(e) {}
+        try { script.remove(); } catch(e) {}
+      }
+
+      timer = setTimeout(() => {
+        cleanup();
+        reject(new Error("JSONP 逾時（請確認 EXEC_URL 是 /exec、Web App 權限為 Anyone、且已重新部署最新版本）"));
+      }, TIMEOUT_MS);
+
 
       window[cbName] = (payload) => {
         try{
-          delete window[cbName];
-          script.remove();
+          cleanup();
           resolve(payload);
         }catch(e){
           reject(e);
@@ -30,9 +43,8 @@
       script.src = `${url}${url.includes("?") ? "&" : "?"}callback=${cbName}&t=${Date.now()}`;
       script.async = true;
       script.onerror = () => {
-        delete window[cbName];
-        script.remove();
-        reject(new Error("JSONP 載入失敗"));
+        cleanup();
+        reject(new Error("JSONP 載入失敗（可能是 Web App 權限/URL 錯誤或後端拋錯）"));
       };
 
       document.body.appendChild(script);
