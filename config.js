@@ -2,6 +2,6 @@
 // （建議：把 config.example.js 複製成 config.js 再改）
 
 window.TRIP_CONFIG = {
-  EXEC_URL: "https://script.google.com/macros/s/AKfycbxMVr13SBFWdJICZNkaceB-pV_ijfaDXwoH_ySMzhTVqqzDD5l6dtLnU0dIVbkSZzb4/exec",
+  EXEC_URL: "https://script.google.com/macros/s/AKfycbyNdMZJDAU_vZLxn4_MC8xauheraJUhHJVwPv5oP8V9L9ow-1WzdgVX-lqD1YuG38I/exec",
   API_KEY: "Italy-Trip-Is-Good",
 };
