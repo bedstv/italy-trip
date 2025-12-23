@@ -25,32 +25,59 @@
     <div id="out"></div>
   </div>
 <script>
-  const out = document.getElementById('out');
-  const u = (window.TRIP_CONFIG && window.TRIP_CONFIG.EXEC_URL) || '';
-  document.getElementById('u').textContent = u || '(未設定)';
-  function log(title, obj, ok=true){
-    const div=document.createElement('div');
-    div.innerHTML = `<h3 class="${ok?'ok':'bad'}">${ok?'✅':'❌'} ${title}</h3><pre>${escapeHtml(JSON.stringify(obj,null,2))}</pre>`;
-    out.appendChild(div);
+  const cfg = window.TRIP_CONFIG || {};
+  const $ = (sel)=>document.querySelector(sel);
+  const out = (id, ok, obj)=>{
+    const el = $("#"+id);
+    el.className = ok ? "ok" : "bad";
+    el.querySelector("pre").textContent = JSON.stringify(obj, null, 2);
+  };
+
+  function showExec(){
+    $("#exec").textContent = cfg.EXEC_URL || "(missing)";
   }
-  function escapeHtml(s){return (s||'').replace(/[&<>"]/g,c=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;' }[c]));}
+
   async function run(){
-    out.innerHTML='';
+    $("#btn").disabled = true;
     try{
-      const meta = await TripAPI.meta();
-      log('meta', meta, !!meta.ok);
-    }catch(e){ log('meta', {error:String(e)}, false); return; }
-    try{
-      const exp = await TripAPI.exportXlsx();
-      log('export', {ok:exp.ok, bytes: (exp.bytes||0), sheets: exp.sheets}, !!exp.ok);
-    }catch(e){ log('export', {error:String(e)}, false); return; }
-    try{
-      const pingId = 'debug-'+Date.now();
-      const upd = await TripAPI.update('trips', pingId, { date:'', '日期':'', note:'debug', '備註':'debug', name:'debug', '名稱':'debug', city:'debug', '城市':'debug' }, {allowMissing:true});
-      log('update(trips) 測試', upd, !!upd.ok);
-    }catch(e){ log('update(trips) 測試', {error:String(e)}, false); }
+      // meta
+      const m = await TripAPI.meta();
+      out("meta", true, m);
+
+      // export（只顯示長度，避免畫面太大）
+      const ex = await TripAPI.exportXlsx();
+      out("export", true, { ok:true, generated_at: ex.generated_at, bytes: ex.b64 ? Math.floor(ex.b64.length*3/4) : 0 });
+
+      // trips: add -> update -> delete（用測試資料，不會影響你原本資料）
+      const testName = "TEST_" + Date.now();
+      const addRes = await TripAPI.add("trips", { 城市:"測試城市", 項目類型:"測試", 必去/備選:"備選", 名稱:testName, 日期:"" });
+      out("add", true, addRes);
+
+      const id = addRes.id || addRes.trip_id;
+      const updRes = await TripAPI.update("trips", id, { 日期: "2025-12-25" });
+      out("update", true, updRes);
+
+      const delRes = await TripAPI.del("trips", id);
+      out("delete", true, delRes);
+
+    }catch(err){
+      const info = { ok:false, error: String(err && err.message ? err.message : err), url: err && err.url ? err.url : undefined, code: err && err.code ? err.code : undefined };
+      // 依序填入第一個尚未成功的區塊
+      const ids = ["meta","export","add","update","delete"];
+      for (const id of ids){
+        const el = $("#"+id);
+        if (!el.classList.contains("ok")){
+          out(id, false, info);
+          break;
+        }
+      }
+    }finally{
+      $("#btn").disabled = false;
+    }
   }
-  document.getElementById('run').addEventListener('click', run);
+
+  showExec();
+  $("#btn").addEventListener("click", run);
 </script>
 </body>
 </html>
