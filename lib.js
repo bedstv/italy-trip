@@ -72,28 +72,37 @@ function base64ToArrayBuffer(b64){
 /***********************
  * JSONP
  ***********************/
-function jsonp(url){
+function jsonp(url, opts={}){
+  const timeoutMs = opts.timeoutMs || 15000;
   return new Promise((resolve, reject) => {
     const cbName = "__cb_" + Date.now() + "_" + Math.floor(Math.random()*1e6);
     const script = document.createElement("script");
+    let done = false;
+
+    const cleanup = () => {
+      if (done) return;
+      done = true;
+      try{ delete window[cbName]; }catch(_){}
+      try{ script.remove(); }catch(_){}
+      try{ clearTimeout(timer); }catch(_){}
+    };
 
     window[cbName] = (payload) => {
-      try{
-        delete window[cbName];
-        script.remove();
-        resolve(payload);
-      }catch(e){
-        reject(e);
-      }
+      cleanup();
+      resolve(payload);
     };
 
     script.src = `${url}${url.includes("?") ? "&" : "?"}callback=${cbName}&t=${Date.now()}`;
     script.async = true;
     script.onerror = () => {
-      delete window[cbName];
-      script.remove();
-      reject(new Error("JSONP 載入失敗"));
+      cleanup();
+      reject(new Error("JSONP 載入失敗（可能是 EXEC_URL/權限/部署版本錯誤）"));
     };
+    // 若後端回 200 但未呼叫 callback，會卡住；加 timeout 保底
+    const timer = setTimeout(() => {
+      cleanup();
+      reject(new Error("JSONP 等待逾時（後端未呼叫 callback，常見原因：Web App 權限/URL/打到 HTML 登入頁）"));
+    }, timeoutMs);
 
     document.body.appendChild(script);
   });

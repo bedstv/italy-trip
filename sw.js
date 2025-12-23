@@ -1,4 +1,4 @@
-const CACHE = "italy-trip-v24";
+const CACHE = "italy-trip-v24-v241";
 
 const ASSETS = [
   "./",
