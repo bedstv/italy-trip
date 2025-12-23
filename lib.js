@@ -15,6 +15,36 @@ if (!API_KEY) throw new Error("Missing TRIP_CONFIG.API_KEY (請編輯 config.js)
 
 // 工作表名稱（Excel / Google Sheet）
 const SHEETS = {
+/***********************
+ * ensureXLSX — 動態載入 XLSX（避免 CDN 偶發失敗導致一直載入中）
+ ***********************/
+function loadScript_(src){
+  return new Promise((resolve,reject)=>{
+    const s=document.createElement("script");
+    s.src=src;
+    s.async=true;
+    s.onload=()=>resolve();
+    s.onerror=()=>reject(new Error("Failed to load script: "+src));
+    document.head.appendChild(s);
+  });
+}
+
+async function ensureXLSX(){
+  if (window.XLSX) return;
+  const urls = [
+    "https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js",
+    "https://unpkg.com/xlsx@0.18.5/dist/xlsx.full.min.js",
+    "https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js",
+  ];
+  let lastErr = null;
+  for (const u of urls){
+    try{
+      await loadScript_(u);
+      if (window.XLSX) return;
+    }catch(e){ lastErr = e; }
+  }
+  throw lastErr || new Error("Can't load XLSX library");
+}
   trips: "行程清單（iPhone）",
   transport: "交通",
   memos: "備忘錄",
@@ -188,6 +218,7 @@ async function tryLoadFromLocalCache(){
   const t = localStorage.getItem(LS_TIME);
   if (!b64) return null;
   const buf = base64ToArrayBuffer(b64);
+  await ensureXLSX();
   return { data: parseWorkbook(buf), generated_at: t || "" , from:"offline" };
 }
 
@@ -200,6 +231,7 @@ async function loadFromExec(){
   localStorage.setItem(LS_B64, payload.b64);
   localStorage.setItem(LS_TIME, payload.generated_at || "");
   const buf = base64ToArrayBuffer(payload.b64);
+  await ensureXLSX();
   return { data: parseWorkbook(buf), generated_at: payload.generated_at || "", from:"online" };
 }
 
