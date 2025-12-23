@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>後端連線自檢</title>
+  <link rel="stylesheet" href="./style.css" />
+  <script src="./xlsx_loader.js"></script>
+  <script src="./config.js"></script>
+  <script src="./api.js"></script>
+  <style>
+    .box{padding:16px;max-width:900px;margin:0 auto;}
+    pre{white-space:pre-wrap;word-break:break-word;background:#f6f6f6;padding:12px;border-radius:12px;}
+    .ok{color:#0a7;}
+    .bad{color:#c00;}
+    .btn{padding:10px 14px;border-radius:999px;border:1px solid #ddd;background:#fff;}
+  </style>
+</head>
+<body>
+  <div class="box">
+    <h1>後端連線自檢</h1>
+    <p>用來快速確認：EXEC_URL 是否正確、Web App 權限是否為 Anyone、以及 export/update 是否可用。</p>
+    <p><b>EXEC_URL：</b> <span id="u"></span></p>
+    <p><button class="btn" id="run">開始測試</button></p>
+    <div id="out"></div>
+  </div>
+<script>
+  const out = document.getElementById('out');
+  const u = (window.TRIP_CONFIG && window.TRIP_CONFIG.EXEC_URL) || '';
+  document.getElementById('u').textContent = u || '(未設定)';
+  function log(title, obj, ok=true){
+    const div=document.createElement('div');
+    div.innerHTML = `<h3 class="${ok?'ok':'bad'}">${ok?'✅':'❌'} ${title}</h3><pre>${escapeHtml(JSON.stringify(obj,null,2))}</pre>`;
+    out.appendChild(div);
+  }
+  function escapeHtml(s){return (s||'').replace(/[&<>"]/g,c=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;' }[c]));}
+  async function run(){
+    out.innerHTML='';
+    try{
+      const meta = await TripAPI.meta();
+      log('meta', meta, !!meta.ok);
+    }catch(e){ log('meta', {error:String(e)}, false); return; }
+    try{
+      const exp = await TripAPI.exportXlsx();
+      log('export', {ok:exp.ok, bytes: (exp.bytes||0), sheets: exp.sheets}, !!exp.ok);
+    }catch(e){ log('export', {error:String(e)}, false); return; }
+    try{
+      const pingId = 'debug-'+Date.now();
+      const upd = await TripAPI.update('trips', pingId, { date:'', '日期':'', note:'debug', '備註':'debug', name:'debug', '名稱':'debug', city:'debug', '城市':'debug' }, {allowMissing:true});
+      log('update(trips) 測試', upd, !!upd.ok);
+    }catch(e){ log('update(trips) 測試', {error:String(e)}, false); }
+  }
+  document.getElementById('run').addEventListener('click', run);
+</script>
+</body>
+</html>

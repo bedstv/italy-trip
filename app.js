@@ -1,4 +1,10 @@
 /***********************
+async function _ensureXLSX(){
+  if (window.ensureXLSX) return window.ensureXLSX();
+  if (window.XLSX) return true;
+  throw new Error('XLSX not loaded');
+}
+
  * 設定（config.js）
  ***********************/
 // ✅ 統一設定來源：config.js + api.js
@@ -39,6 +45,12 @@ document.getElementById("fileInput")
   });
 
 /***********************
+async function _ensureXLSX(){
+  if (window.ensureXLSX) return window.ensureXLSX();
+  if (window.XLSX) return true;
+  throw new Error('XLSX not loaded');
+}
+
  * 狀態
  ***********************/
 let allRows = []; // 2D array rows (without header)
@@ -50,6 +62,12 @@ let showOptional = false;  // 顯示備選
 let q = "";                // search
 
 /***********************
+async function _ensureXLSX(){
+  if (window.ensureXLSX) return window.ensureXLSX();
+  if (window.XLSX) return true;
+  throw new Error('XLSX not loaded');
+}
+
  * utils
  ***********************/
 function normalizeHeader(h){ return String(h || "").trim(); }
@@ -123,6 +141,12 @@ function base64ToArrayBuffer(b64){
 }
 
 /***********************
+async function _ensureXLSX(){
+  if (window.ensureXLSX) return window.ensureXLSX();
+  if (window.XLSX) return true;
+  throw new Error('XLSX not loaded');
+}
+
  * JSONP helper
  ***********************/
 function jsonp(url){
@@ -153,6 +177,12 @@ function jsonp(url){
 }
 
 /***********************
+async function _ensureXLSX(){
+  if (window.ensureXLSX) return window.ensureXLSX();
+  if (window.XLSX) return true;
+  throw new Error('XLSX not loaded');
+}
+
  * A) 讀取資料（export）
  ***********************/
 async function tryLoadFromLocalCache(){
@@ -213,6 +243,12 @@ async function loadFromFile(file){
 }
 
 /***********************
+async function _ensureXLSX(){
+  if (window.ensureXLSX) return window.ensureXLSX();
+  if (window.XLSX) return true;
+  throw new Error('XLSX not loaded');
+}
+
  * B) 產生導航連結
  ***********************/
 function ensureMapsLink(link, placeText){
@@ -223,6 +259,12 @@ function ensureMapsLink(link, placeText){
 }
 
 /***********************
+async function _ensureXLSX(){
+  if (window.ensureXLSX) return window.ensureXLSX();
+  if (window.XLSX) return true;
+  throw new Error('XLSX not loaded');
+}
+
  * 寫回（update）
  * 用 JSONP 避免 CORS
  ***********************/
@@ -252,10 +294,17 @@ async function deleteTrip(tripId){
 }
 
 /***********************
+async function _ensureXLSX(){
+  if (window.ensureXLSX) return window.ensureXLSX();
+  if (window.XLSX) return true;
+  throw new Error('XLSX not loaded');
+}
+
  * Excel 解析
  ***********************/
 async function loadWorkbookArrayBuffer(buf){
-  const wb = XLSX.read(buf, { type: "array" });
+  await _ensureXLSX();
+    const wb = (await _ensureXLSX(), XLSX.read)(buf, { type: "array" });
   const sheetName = wb.SheetNames.includes(SHEET_NAME) ? SHEET_NAME : wb.SheetNames[0];
   const ws = wb.Sheets[sheetName];
 
@@ -299,6 +348,12 @@ async function loadWorkbookArrayBuffer(buf){
 }
 
 /***********************
+async function _ensureXLSX(){
+  if (window.ensureXLSX) return window.ensureXLSX();
+  if (window.XLSX) return true;
+  throw new Error('XLSX not loaded');
+}
+
  * 渲染（含可編輯 UI）
  ***********************/
 function render(){
@@ -500,6 +555,12 @@ function render(){
 }
 
 /***********************
+async function _ensureXLSX(){
+  if (window.ensureXLSX) return window.ensureXLSX();
+  if (window.XLSX) return true;
+  throw new Error('XLSX not loaded');
+}
+
  * 事件：列表委派（避免每次 render 重綁）
  ***********************/
 listEl.addEventListener("click", async (ev) => {
@@ -620,6 +681,12 @@ listEl.addEventListener("click", async (ev) => {
 });
 
 /***********************
+async function _ensureXLSX(){
+  if (window.ensureXLSX) return window.ensureXLSX();
+  if (window.XLSX) return true;
+  throw new Error('XLSX not loaded');
+}
+
  * UI 控制
  ***********************/
 modeTodayBtn.addEventListener("click", () => {
@@ -655,6 +722,12 @@ for (const sel of [dateSel, citySel, typeSel, prioSel]){
 }
 
 /***********************
+async function _ensureXLSX(){
+  if (window.ensureXLSX) return window.ensureXLSX();
+  if (window.XLSX) return true;
+  throw new Error('XLSX not loaded');
+}
+
  * 新增行程：彈窗 UI（JS 注入）
  ***********************/
 const modalMask = document.createElement("div");
@@ -809,6 +882,12 @@ modalMask.querySelector(".modalSubmit").addEventListener("click", async () => {
 });
 
 /***********************
+async function _ensureXLSX(){
+  if (window.ensureXLSX) return window.ensureXLSX();
+  if (window.XLSX) return true;
+  throw new Error('XLSX not loaded');
+}
+
  * init
  ***********************/
 loadFromExec(false);

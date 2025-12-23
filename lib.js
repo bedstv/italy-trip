@@ -15,6 +15,11 @@ if (!API_KEY) throw new Error("Missing TRIP_CONFIG.API_KEY (請編輯 config.js)
 
 // 工作表名稱（Excel / Google Sheet）
 const SHEETS = {
+  trips: "行程清單（iPhone）",
+  transport: "交通",
+  memos: "備忘錄",
+};
+
 /***********************
  * ensureXLSX — 動態載入 XLSX（避免 CDN 偶發失敗導致一直載入中）
  ***********************/
@@ -30,25 +35,10 @@ function loadScript_(src){
 }
 
 async function ensureXLSX(){
-  if (window.XLSX) return;
-  const urls = [
-    "https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js",
-    "https://unpkg.com/xlsx@0.18.5/dist/xlsx.full.min.js",
-    "https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js",
-  ];
-  let lastErr = null;
-  for (const u of urls){
-    try{
-      await loadScript_(u);
-      if (window.XLSX) return;
-    }catch(e){ lastErr = e; }
-  }
-  throw lastErr || new Error("Can't load XLSX library");
+  if (window.ensureXLSX) return window.ensureXLSX();
+  if (window.XLSX) return true;
+  throw new Error("XLSX not loaded");
 }
-  trips: "行程清單（iPhone）",
-  transport: "交通",
-  memos: "備忘錄",
-};
 
 // localStorage offline cache (v2)
 const LS_OK = "trip_v2_cache_ok";

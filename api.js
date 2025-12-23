@@ -17,6 +17,12 @@
       const cbName = "__cb_" + Date.now() + "_" + Math.floor(Math.random()*1e6);
       const script = document.createElement("script");
       const TIMEOUT_MS = 15000;
+
+async function ensureXLSX(){
+  if (window.ensureXLSX) return window.ensureXLSX();
+  if (window.XLSX) return true;
+  throw new Error('XLSX not loaded');
+}
       let timer = null;
 
       function cleanup(){
@@ -84,6 +90,10 @@
     return url.toString();
   }
 
+  async function meta(){
+    return await jsonp(buildUrl("meta", {}));
+  }
+
   async function exportXlsx(){
     return await jsonp(buildUrl("export", {}));
   }
@@ -128,5 +138,5 @@
     return await jsonp(url.toString());
   }
 
-  window.TripAPI = { EXEC_URL, API_KEY, jsonp, exportXlsx, update, add, del };
+  window.TripAPI = { EXEC_URL, API_KEY, jsonp, meta, exportXlsx, update, add, del };
 })();

@@ -1,4 +1,7 @@
-const CACHE = "italy-trip-v24-v244";
+// Simple Service Worker (offline shell)
+// - Does NOT precache config.js (so settings changes take effect)
+// - Uses cache-first for app assets
+const CACHE = "italy-trip-v25-1";
 
 const ASSETS = [
   "./",
@@ -7,42 +10,51 @@ const ASSETS = [
   "./places.html",
   "./transport.html",
   "./memo.html",
+  "./debug.html",
   "./style.css",
+  "./manifest.json",
   "./app.js",
   "./overview.js",
   "./lib.js",
   "./api.js",
+  "./xlsx_loader.js",
   "./places.js",
   "./transport.js",
   "./memo.js",
-  // config.js 刻意不預先快取，方便你改設定後馬上生效
-  "./manifest.json"
+  "./config.example.js"
 ];
 
-self.addEventListener("install", (e) => {
-  e.waitUntil(caches.open(CACHE).then(c => c.addAll(ASSETS)));
-  self.skipWaiting();
-});
-
-self.addEventListener("activate", (e) => {
-  e.waitUntil(
-    caches.keys().then(keys =>
-      Promise.all(keys.filter(k => k !== CACHE).map(k => caches.delete(k)))
-    )
+self.addEventListener("install", (event) => {
+  event.waitUntil(
+    caches.open(CACHE).then((cache) => cache.addAll(ASSETS)).then(() => self.skipWaiting())
   );
-  self.clients.claim();
 });
 
-self.addEventListener("fetch", (e) => {
-  const url = new URL(e.request.url);
-  const host = url.hostname;
+self.addEventListener("activate", (event) => {
+  event.waitUntil(
+    caches.keys().then((keys) =>
+      Promise.all(keys.filter((k) => k !== CACHE).map((k) => caches.delete(k)))
+    ).then(() => self.clients.claim())
+  );
+});
 
-  // ✅ 外部資料永遠走網路（避免看到舊行程）
-  if (host.includes("google.com") || host.includes("gstatic.com")) {
+self.addEventListener("fetch", (event) => {
+  const url = new URL(event.request.url);
+
+  // Never cache dynamic config
+  if (url.pathname.endsWith("/config.js")) {
+    event.respondWith(fetch(event.request));
     return;
   }
 
-  e.respondWith(
-    caches.match(e.request).then(r => r || fetch(e.request))
+  // External requests: network first
+  if (url.origin !== self.location.origin) {
+    event.respondWith(fetch(event.request).catch(() => caches.match(event.request)));
+    return;
+  }
+
+  // Same-origin: cache first
+  event.respondWith(
+    caches.match(event.request).then((cached) => cached || fetch(event.request))
   );
 });

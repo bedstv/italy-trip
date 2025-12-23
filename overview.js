@@ -1,4 +1,10 @@
 /***********************
+async function _ensureXLSX(){
+  if (window.ensureXLSX) return window.ensureXLSX();
+  if (window.XLSX) return true;
+  throw new Error('XLSX not loaded');
+}
+
  * 行程總覽（Dashboard / Timeline）
  * - 讀取 Apps Script export (base64 xlsx, JSONP)
  * - 支援：搜尋、只看必去、只看待辦
@@ -85,7 +91,8 @@ function typeIcon(type = "") {
 /* ========= 解析 XLSX ========= */
 function parseFromB64(b64) {
   const buf = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0)).buffer;
-  const wb = XLSX.read(buf, { type: "array", cellDates: true });
+  await _ensureXLSX();
+    const wb = (await _ensureXLSX(), XLSX.read)(buf, { type: "array", cellDates: true });
   const ws = wb.Sheets[SHEET_NAME];
   const rows = XLSX.utils.sheet_to_json(ws, { defval: "" });
 
