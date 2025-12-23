@@ -1,4 +1,4 @@
-const CACHE = "italy-trip-v20";
+const CACHE = "italy-trip-v21";
 
 const ASSETS = [
   "./",
@@ -14,6 +14,7 @@ const ASSETS = [
   "./places.js",
   "./transport.js",
   "./memo.js",
+  // config.js 刻意不預先快取，方便你改設定後馬上生效
   "./manifest.json"
 ];
 

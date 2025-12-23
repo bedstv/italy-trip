@@ -6,11 +6,12 @@
  * - Offline cache (localStorage)
  ***********************/
 
-// ✅ 改成你自己的 Apps Script Web App URL
-const EXEC_URL = "https://script.google.com/macros/s/AKfycbyNdMZJDAU_vZLxn4_MC8xauheraJUhHJVwPv5oP8V9L9ow-1WzdgVX-lqD1YuG38I/exec";
+// ✅ 統一設定（config.js）
+const EXEC_URL = (window.TRIP_CONFIG && window.TRIP_CONFIG.EXEC_URL) || "";
+const API_KEY = (window.TRIP_CONFIG && window.TRIP_CONFIG.API_KEY) || "";
 
-// ✅ 要跟 Apps Script 的 API_KEY 一樣
-const API_KEY = "Italy-Trip-Is-Good";
+if (!EXEC_URL) throw new Error("Missing TRIP_CONFIG.EXEC_URL (請編輯 config.js)");
+if (!API_KEY) throw new Error("Missing TRIP_CONFIG.API_KEY (請編輯 config.js)");
 
 // 工作表名稱（Excel / Google Sheet）
 const SHEETS = {

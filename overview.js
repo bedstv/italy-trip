@@ -6,8 +6,11 @@
  * - 離線：localStorage 快取最後一次的 b64
  ***********************/
 
-const EXEC_URL =
-  "https://script.google.com/macros/s/AKfycbyNdMZJDAU_vZLxn4_MC8xauheraJUhHJVwPv5oP8V9L9ow-1WzdgVX-lqD1YuG38I/exec";
+const EXEC_URL = (window.TRIP_CONFIG && window.TRIP_CONFIG.EXEC_URL) || "";
+const API_KEY = (window.TRIP_CONFIG && window.TRIP_CONFIG.API_KEY) || "";
+
+if (!EXEC_URL) throw new Error("Missing TRIP_CONFIG.EXEC_URL (請編輯 config.js)");
+if (!API_KEY) throw new Error("Missing TRIP_CONFIG.API_KEY (請編輯 config.js)");
 const SHEET_NAME = "行程清單（iPhone）";
 
 const LS_KEY_B64 = "italyTrip_overview_b64";
@@ -125,7 +128,10 @@ function parseFromB64(b64) {
 async function load() {
   statusEl.textContent = "載入中…";
   try {
-    const payload = await jsonp(`${EXEC_URL}?action=export`);
+    const u = new URL(EXEC_URL);
+    u.searchParams.set("action", "export");
+    u.searchParams.set("api_key", API_KEY);
+    const payload = await jsonp(u.toString());
     if (!payload?.b64) throw new Error("No b64 in payload");
 
     // cache
