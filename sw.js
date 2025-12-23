@@ -1,4 +1,4 @@
-const CACHE = "italy-trip-v21";
+const CACHE = "italy-trip-v24";
 
 const ASSETS = [
   "./",
@@ -11,6 +11,7 @@ const ASSETS = [
   "./app.js",
   "./overview.js",
   "./lib.js",
+  "./api.js",
   "./places.js",
   "./transport.js",
   "./memo.js",

@@ -1,9 +1,9 @@
 /***********************
  * 設定（config.js）
  ***********************/
-const EXEC_URL = (window.TRIP_CONFIG && window.TRIP_CONFIG.EXEC_URL) || "";
-const API_KEY = (window.TRIP_CONFIG && window.TRIP_CONFIG.API_KEY) || "";
-
+// ✅ 統一設定來源：config.js + api.js
+const EXEC_URL = (window.TripAPI && window.TripAPI.EXEC_URL) || ((window.TRIP_CONFIG && window.TRIP_CONFIG.EXEC_URL) || "");
+const API_KEY  = (window.TripAPI && window.TripAPI.API_KEY ) || ((window.TRIP_CONFIG && window.TRIP_CONFIG.API_KEY ) || "");
 if (!EXEC_URL) throw new Error("Missing TRIP_CONFIG.EXEC_URL (請編輯 config.js)");
 if (!API_KEY) throw new Error("Missing TRIP_CONFIG.API_KEY (請編輯 config.js)");
 
@@ -227,68 +227,28 @@ function ensureMapsLink(link, placeText){
  * 用 JSONP 避免 CORS
  ***********************/
 // ✅ 新版：支援多欄位；也相容舊版 (tripId, note, ticket, booking)
+// ✅ 統一 API：所有寫入都走 TripAPI
 async function writeBackUpdate(tripId, a, b, c){
-  const url = new URL(EXEC_URL);
-  url.searchParams.set("action", "update");
-  url.searchParams.set("api_key", API_KEY);
-  url.searchParams.set("trip_id", tripId);
-
-  // 相容舊版參數：note/ticket/booking
+  // 相容舊呼叫：writeBackUpdate(id, note, ticket, booking)
   if (typeof a === "string" || typeof a === "number" || a === "" || a === null || a === undefined) {
     const note = a ?? "";
     const ticket = b ?? "";
     const booking = c ?? "";
-    url.searchParams.set("note", note);
-    url.searchParams.set("ticket", ticket);
-    url.searchParams.set("booking", booking);
-  } else {
-    // 新版：a 是 object，key 可用「欄位名」(中文) 或舊 key(note/ticket/booking)
-    const fields = a || {};
-
-    // 舊 key（可選）
-    if (fields.note !== undefined) url.searchParams.set("note", fields.note ?? "");
-    if (fields.ticket !== undefined) url.searchParams.set("ticket", fields.ticket ?? "");
-    if (fields.booking !== undefined) url.searchParams.set("booking", fields.booking ?? "");
-
-    // 新 key：直接用欄位名當 querystring key（後端白名單會擋）
-    for (const [k, v] of Object.entries(fields)) {
-      if (k === "note" || k === "ticket" || k === "booking") continue;
-      url.searchParams.set(k, v ?? "");
-    }
+    return await TripAPI.update("trips", tripId, { note, ticket, booking });
   }
-
-  return await jsonp(url.toString());
+  // 新呼叫：writeBackUpdate(id, { ...fields })
+  const fields = a || {};
+  return await TripAPI.update("trips", tripId, fields);
 }
 
 async function addTrip(payload){
-  const url = new URL(EXEC_URL);
-  url.searchParams.set("action", "add");
-  url.searchParams.set("api_key", API_KEY);
-
-  // 必填
-  url.searchParams.set("date", payload.date);
-  url.searchParams.set("city", payload.city);
-  url.searchParams.set("type", payload.type);
-  url.searchParams.set("prio", payload.prio);
-  url.searchParams.set("name", payload.name);
-
-  // 選填
-  if (payload.time) url.searchParams.set("time", payload.time);
-  if (payload.place) url.searchParams.set("place", payload.place);
-  if (payload.map) url.searchParams.set("map", payload.map);
-  if (payload.note) url.searchParams.set("note", payload.note);
-  if (payload.ticket) url.searchParams.set("ticket", payload.ticket);
-  if (payload.booking) url.searchParams.set("booking", payload.booking);
-
-  return await jsonp(url.toString());
+  // payload: {date, city, type, prio, name, time?, place?, map?, note?, ticket?, booking?}
+  // TripAPI 會自動補中文欄位相容
+  return await TripAPI.add("trips", payload);
 }
 
 async function deleteTrip(tripId){
-  const url = new URL(EXEC_URL);
-  url.searchParams.set("action", "delete");
-  url.searchParams.set("api_key", API_KEY);
-  url.searchParams.set("trip_id", tripId);
-  return await jsonp(url.toString());
+  return await TripAPI.del("trips", tripId);
 }
 
 /***********************

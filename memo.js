@@ -160,7 +160,7 @@ listEl.addEventListener("click", async (ev) => {
     if (!ok) return;
     statusEl2.textContent = "刪除中…";
     try{
-      const res = await apiDelete("memos", id);
+      const res = await TripAPI.del("memos", id);
       if (!res || !res.ok) {
         statusEl2.textContent = `❌ 刪除失敗：${res?.error || "未知錯誤"}`;
         return;
@@ -187,7 +187,7 @@ listEl.addEventListener("click", async (ev) => {
 
     statusEl2.textContent = "儲存中…";
     try{
-      const res = await apiUpdate("memos", id, fields);
+      const res = await TripAPI.update("memos", id, fields);
       if (!res || !res.ok) {
         statusEl2.textContent = `❌ 失敗：${res?.error || "未知錯誤"}`;
         return;
@@ -295,7 +295,7 @@ modalMask.querySelector(".modalSubmit").addEventListener("click", async () => {
 
   try{
     statusEl.textContent = "新增中…";
-    const res = await apiAdd("memos", fields);
+    const res = await TripAPI.add("memos", fields);
     if (!res || !res.ok) {
       alert(`新增失敗：${res?.error || "未知錯誤"}`);
       return;

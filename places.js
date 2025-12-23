@@ -215,7 +215,7 @@ listEl.addEventListener("click", async (ev) => {
 
     status.textContent = "儲存中…";
     try{
-      const res = await apiUpdate("trips", id, { "date": date });
+      const res = await TripAPI.update("trips", id, { "date": date, "日期": date });
       if (!res || !res.ok){
         status.textContent = `❌ 失敗：${res?.error || "未知錯誤"}`;
         return;

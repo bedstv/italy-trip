@@ -6,9 +6,8 @@
  * - 離線：localStorage 快取最後一次的 b64
  ***********************/
 
-const EXEC_URL = (window.TRIP_CONFIG && window.TRIP_CONFIG.EXEC_URL) || "";
-const API_KEY = (window.TRIP_CONFIG && window.TRIP_CONFIG.API_KEY) || "";
-
+const EXEC_URL = (window.TripAPI && window.TripAPI.EXEC_URL) || ((window.TRIP_CONFIG && window.TRIP_CONFIG.EXEC_URL) || "");
+const API_KEY  = (window.TripAPI && window.TripAPI.API_KEY ) || ((window.TRIP_CONFIG && window.TRIP_CONFIG.API_KEY ) || "");
 if (!EXEC_URL) throw new Error("Missing TRIP_CONFIG.EXEC_URL (請編輯 config.js)");
 if (!API_KEY) throw new Error("Missing TRIP_CONFIG.API_KEY (請編輯 config.js)");
 const SHEET_NAME = "行程清單（iPhone）";
@@ -37,24 +36,7 @@ let todoOnly = false;
 let query = "";
 
 /* ========= JSONP ========= */
-function jsonp(url) {
-  return new Promise((resolve, reject) => {
-    const cb = "__cb_" + Date.now() + "_" + Math.random().toString(16).slice(2);
-    const s = document.createElement("script");
-    window[cb] = (p) => {
-      delete window[cb];
-      s.remove();
-      resolve(p);
-    };
-    s.onerror = () => {
-      delete window[cb];
-      s.remove();
-      reject(new Error("JSONP failed"));
-    };
-    s.src = url + (url.includes("?") ? "&" : "?") + "callback=" + cb;
-    document.body.appendChild(s);
-  });
-}
+function jsonp(url){ return TripAPI.jsonp(url); }
 
 /* ========= Excel 日期 → yyyy-mm-dd ========= */
 function excelDateToYMD(v) {
