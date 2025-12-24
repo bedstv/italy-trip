@@ -1,7 +1,7 @@
 // Simple Service Worker (offline shell)
 // - Does NOT precache config.js (so settings changes take effect)
 // - Uses cache-first for app assets
-const CACHE = "italy-trip-v26-2";
+const CACHE = "italy-trip-v26-3";
 
 const ASSETS = [
   "./",

@@ -125,6 +125,33 @@ function mapSearchUrl(q){
   return "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(q);
 }
 
+// 讓各頁面可以安全產生 Google Maps 連結
+// - 若 rawLink 看起來就是 http(s) 連結，直接用
+// - 否則用 place/name 做 search query
+function ensureMapsLink(rawLink, fallbackQuery=""){
+  const u = toStr(rawLink);
+  if (u && /^https?:\/\//i.test(u)) return u;
+  const q = toStr(fallbackQuery);
+  return q ? mapSearchUrl(q) : "";
+}
+
+// 以使用者本地時區產生 YYYY-MM-DD
+function todayStrLocal(){
+  const d = new Date();
+  const y = d.getFullYear();
+  const m = String(d.getMonth()+1).padStart(2,"0");
+  const dd = String(d.getDate()).padStart(2,"0");
+  return `${y}-${m}-${dd}`;
+}
+
+function todayStrLocal(){
+  const d = new Date();
+  const y = d.getFullYear();
+  const m = String(d.getMonth()+1).padStart(2,"0");
+  const day = String(d.getDate()).padStart(2,"0");
+  return `${y}-${m}-${day}`;
+}
+
 function sheetToTable_(wb, sheetName){
   if (!wb.SheetNames.includes(sheetName)) return null;
   const ws = wb.Sheets[sheetName];
@@ -215,3 +242,5 @@ window.uniq = uniq;
 window.formatIso = formatIso;
 window.fmtBadge = fmtBadge;
 window.mapSearchUrl = mapSearchUrl;
+window.ensureMapsLink = ensureMapsLink;
+window.todayStrLocal = todayStrLocal;

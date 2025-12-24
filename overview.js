@@ -17,8 +17,9 @@ const kpiDays  = document.getElementById("kpiDays");
 const kpiItems = document.getElementById("kpiItems");
 const kpiMust  = document.getElementById("kpiMust");
 const kpiOpt   = document.getElementById("kpiOpt");
-const kpiTodo  = document.getElementById("kpiTodo");
-const kpiDone  = document.getElementById("kpiDone");
+// overview.html 的 KPI 是「票務待辦 / 訂位待辦」
+const kpiTicketTodo  = document.getElementById("kpiTicketTodo");
+const kpiBookingTodo = document.getElementById("kpiBookingTodo");
 
 let data=null, tripsTable=null, allRows=[];
 
@@ -68,15 +69,24 @@ function render(){
   const dates = uniq(rows.map(r=>normDate(tableRowValue(tripsTable,r,"日期"))).filter(Boolean));
   const must = rows.filter(r => tableRowValue(tripsTable,r,"必去/備選")==="必去").length;
   const opt  = rows.filter(r => tableRowValue(tripsTable,r,"必去/備選")==="備選").length;
-  const done = rows.filter(r=>isDone(r)).length;
-  const todo = rows.length - done;
+  // 待辦：票務/訂位欄位有內容且尚未完成(✔)
+  const ticketTodo = rows.filter(r=>{
+    if (isDone(r)) return false;
+    const v = tableRowValue(tripsTable,r,"票務");
+    return !!(v && v !== "-" && v !== "—");
+  }).length;
+  const bookingTodo = rows.filter(r=>{
+    if (isDone(r)) return false;
+    const v = tableRowValue(tripsTable,r,"訂位");
+    return !!(v && v !== "-" && v !== "—");
+  }).length;
 
-  kpiDays.textContent = dates.length || 0;
-  kpiItems.textContent= rows.length || 0;
-  kpiMust.textContent = must;
-  kpiOpt.textContent  = opt;
-  kpiTodo.textContent = todo;
-  kpiDone.textContent = done;
+  kpiDays.textContent  = dates.length || 0;
+  kpiItems.textContent = rows.length || 0;
+  kpiMust.textContent  = must;
+  kpiOpt.textContent   = opt;
+  if (kpiTicketTodo)  kpiTicketTodo.textContent  = ticketTodo;
+  if (kpiBookingTodo) kpiBookingTodo.textContent = bookingTodo;
 
   // group by date
   const groups = new Map();
