@@ -25,6 +25,127 @@ let data=null, tripsTable=null, allRows=[];
 
 const state = { mustOnly:true, todoOnly:false, q:"" };
 
+// ===== 新增：FAB + Modal（與交通/備忘錄一致） =====
+function buildTripAddModal(){
+  const mask = document.createElement("div");
+  mask.className = "modalMask";
+  mask.style.display = "none";
+  mask.innerHTML = `
+    <div class="modal" role="dialog" aria-modal="true">
+      <div class="modalHead">
+        <div class="modalTitle">新增行程</div>
+        <button class="modalClose" type="button" aria-label="close">✕</button>
+      </div>
+
+      <div class="modalBody full" style="grid-column:1 / -1; display:block;">
+        <div class="editRow">
+          <label>日期</label>
+          <input class="mDate" type="date" />
+          <label>城市</label>
+          <input class="mCity" />
+        </div>
+        <div class="editRow">
+          <label>類型</label>
+          <input class="mType" placeholder="景點 / 餐廳 / 交通…" />
+          <label>必去/備選</label>
+          <input class="mPrio" placeholder="必去 / 備選" />
+        </div>
+        <div class="editRow">
+          <label>建議時段</label>
+          <input class="mTime" placeholder="09:00 / 下午…" />
+        </div>
+        <div class="editRow">
+          <label>名稱</label>
+          <input class="mName" />
+        </div>
+        <div class="editRow">
+          <label>地點文字</label>
+          <input class="mPlace" />
+        </div>
+        <div class="editRow">
+          <label>Google Maps 連結</label>
+          <input class="mMap" placeholder="可留空" />
+        </div>
+        <div class="editRow">
+          <label>票務</label>
+          <input class="mTicket" />
+        </div>
+        <div class="editRow">
+          <label>訂位</label>
+          <input class="mBook" />
+        </div>
+        <div class="editRow">
+          <label>備註</label>
+          <textarea class="mNote" rows="3"></textarea>
+        </div>
+        <div class="sub mHint"></div>
+        <div class="editRow">
+          <button class="mSave">新增</button>
+          <span class="mStatus"></span>
+        </div>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(mask);
+
+  const els = {
+    mask,
+    date: mask.querySelector(".mDate"),
+    city: mask.querySelector(".mCity"),
+    type: mask.querySelector(".mType"),
+    prio: mask.querySelector(".mPrio"),
+    time: mask.querySelector(".mTime"),
+    name: mask.querySelector(".mName"),
+    place: mask.querySelector(".mPlace"),
+    map: mask.querySelector(".mMap"),
+    ticket: mask.querySelector(".mTicket"),
+    book: mask.querySelector(".mBook"),
+    note: mask.querySelector(".mNote"),
+    hint: mask.querySelector(".mHint"),
+    status: mask.querySelector(".mStatus"),
+    save: mask.querySelector(".mSave"),
+    close: mask.querySelector(".modalClose"),
+  };
+
+  function open(){
+    els.hint.textContent = "";
+    els.status.textContent = "";
+    mask.style.display = "flex";
+  }
+  function close(){ mask.style.display = "none"; }
+
+  els.close.addEventListener("click", close);
+  mask.addEventListener("click", (e)=>{ if (e.target === mask) close(); });
+  return { els, open, close };
+}
+
+const addModal = buildTripAddModal();
+
+async function addTripFromModal(){
+  const f = {
+    "日期": addModal.els.date.value || "",
+    "城市": addModal.els.city.value.trim(),
+    "項目類型": addModal.els.type.value.trim(),
+    "必去/備選": (addModal.els.prio.value.trim() || "必去"),
+    "建議時段": addModal.els.time.value.trim(),
+    "名稱": addModal.els.name.value.trim(),
+    "地點文字": addModal.els.place.value.trim(),
+    "Google Maps 連結": addModal.els.map.value.trim(),
+    "票務": addModal.els.ticket.value.trim(),
+    "訂位": addModal.els.book.value.trim(),
+    "備註": addModal.els.note.value.trim(),
+  };
+  if (!f["名稱"]) throw new Error("請填「名稱」");
+  addModal.els.save.disabled = true;
+  try{
+    await TripAPI.add("trips", f);
+    addModal.close();
+    await loadAny();
+  }finally{
+    addModal.els.save.disabled = false;
+  }
+}
+
 function normDate(d){
   const s = (d||"").trim();
   if (!s) return "";
@@ -183,5 +304,30 @@ searchInput.addEventListener("input", ()=>{
   state.q = searchInput.value;
   render();
 });
+
+// Modal save
+addModal.els.save.addEventListener("click", async ()=>{
+  try{
+    addModal.els.status.textContent = "新增中…";
+    await addTripFromModal();
+  }catch(e){
+    addModal.els.status.textContent = "❌ " + e.message;
+  }
+});
+
+// FAB
+(function injectFab(){
+  const fab = document.createElement("button");
+  fab.className = "fabAdd";
+  fab.type = "button";
+  fab.textContent = "＋ 新增";
+  fab.title = "新增行程";
+  fab.addEventListener("click", ()=>{
+    addModal.els.date.value = "";
+    addModal.els.prio.value = "必去";
+    addModal.open();
+  });
+  document.body.appendChild(fab);
+})();
 
 loadAny();
