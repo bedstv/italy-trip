@@ -1,19 +1,16 @@
 /***********************
  * Italy Trip Planner v2 — Shared Library
  *
- * - JSONP (GitHub Pages) + Apps Script
  * - XLSX export parsing (multiple sheets)
  * - Offline cache (localStorage)
+ * - Helper utils for pages
  ***********************/
 
 // ✅ 統一設定（config.js）
 const EXEC_URL = (window.TRIP_CONFIG && window.TRIP_CONFIG.EXEC_URL) || "";
-const API_KEY = (window.TRIP_CONFIG && window.TRIP_CONFIG.API_KEY) || "";
+const API_KEY  = (window.TRIP_CONFIG && window.TRIP_CONFIG.API_KEY)  || "";
 
-if (!EXEC_URL) throw new Error("Missing TRIP_CONFIG.EXEC_URL (請編輯 config.js)");
-if (!API_KEY) throw new Error("Missing TRIP_CONFIG.API_KEY (請編輯 config.js)");
-
-// 工作表名稱（Excel / Google Sheet）
+// 工作表名稱（與 XLSX 一致）
 const SHEETS = {
   trips: "行程清單（iPhone）",
   transport: "交通",
@@ -21,76 +18,50 @@ const SHEETS = {
 };
 
 /***********************
- * ensureXLSX — 動態載入 XLSX（避免 CDN 偶發失敗導致一直載入中）
+ * XLSX loader
+ * - xlsx_loader.js 會提供 window.ensureXLSX()
+ * - 這裡避免與其同名，改用 requireXLSX()
  ***********************/
+async function requireXLSX(){
+  // 已經有 XLSX
+  if (window.XLSX) return true;
+
+  // 專案內建 loader（建議）
+  if (typeof window.ensureXLSX === "function"){
+    await window.ensureXLSX();
+    if (window.XLSX) return true;
+  }
+
+  // 最後備援：直接載 CDN
+  await loadScript_("https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js");
+  if (!window.XLSX) throw new Error("XLSX not loaded");
+  return true;
+}
+
 function loadScript_(src){
   return new Promise((resolve,reject)=>{
     const s=document.createElement("script");
     s.src=src;
     s.async=true;
     s.onload=()=>resolve();
-    s.onerror=()=>reject(new Error("Failed to load script: "+src));
+    s.onerror=()=>reject(new Error("Failed to load: " + src));
     document.head.appendChild(s);
   });
 }
 
-async function ensureXLSX(){
-  if (window.ensureXLSX) return window.ensureXLSX();
-  if (window.XLSX) return true;
-  throw new Error("XLSX not loaded");
-}
-
-// localStorage offline cache (v2)
-const LS_OK = "trip_v2_cache_ok";
-const LS_B64 = "trip_v2_cache_b64";
-const LS_TIME = "trip_v2_cache_time";
-
 /***********************
- * utils
+ * Base64 helpers
  ***********************/
-function normalizeHeader(h){ return String(h || "").trim(); }
-function toStr(v){ return (v === null || v === undefined) ? "" : String(v).trim(); }
-function uniq(arr){ return [...new Set(arr.filter(Boolean))]; }
-
-function escapeHtml(s){
-  return String(s ?? "")
-    .replace(/&/g,"&amp;")
-    .replace(/</g,"&lt;")
-    .replace(/>/g,"&gt;")
-    .replace(/\"/g,"&quot;")
-    .replace(/'/g,"&#39;");
-}
-
-function todayStrLocal(){
-  const t = new Date();
-  const y = t.getFullYear();
-  const m = String(t.getMonth()+1).padStart(2,"0");
-  const d = String(t.getDate()).padStart(2,"0");
-  return `${y}-${m}-${d}`;
-}
-
-function formatIso(iso){
-  if (!iso) return "";
-  const d = new Date(iso);
-  if (isNaN(d.getTime())) return iso;
-  const y = d.getFullYear();
-  const m = String(d.getMonth()+1).padStart(2,"0");
-  const day = String(d.getDate()).padStart(2,"0");
-  const hh = String(d.getHours()).padStart(2,"0");
-  const mm = String(d.getMinutes()).padStart(2,"0");
-  return `${y}-${m}-${day} ${hh}:${mm}`;
-}
-
 function base64ToArrayBuffer(b64){
-  const binary = atob(b64);
-  const len = binary.length;
+  const bin = atob(b64);
+  const len = bin.length;
   const bytes = new Uint8Array(len);
-  for (let i=0;i<len;i++) bytes[i] = binary.charCodeAt(i);
+  for (let i=0; i<len; i++) bytes[i] = bin.charCodeAt(i);
   return bytes.buffer;
 }
 
 /***********************
- * JSONP
+ * JSONP（只用在沒有 TripAPI 的備援路徑）
  ***********************/
 function jsonp(url, opts={}){
   const timeoutMs = opts.timeoutMs || 15000;
@@ -107,74 +78,53 @@ function jsonp(url, opts={}){
       try{ clearTimeout(timer); }catch(_){}
     };
 
-    window[cbName] = (payload) => {
-      cleanup();
-      resolve(payload);
-    };
+    window[cbName] = (payload) => { cleanup(); resolve(payload); };
 
     script.src = `${url}${url.includes("?") ? "&" : "?"}callback=${cbName}&t=${Date.now()}`;
     script.async = true;
-    script.onerror = () => {
-      cleanup();
-      reject(new Error("JSONP 載入失敗（可能是 EXEC_URL/權限/部署版本錯誤）"));
-    };
-    // 若後端回 200 但未呼叫 callback，會卡住；加 timeout 保底
-    const timer = setTimeout(() => {
-      cleanup();
-      reject(new Error("JSONP 等待逾時（後端未呼叫 callback，常見原因：Web App 權限/URL/打到 HTML 登入頁）"));
-    }, timeoutMs);
+    script.onerror = () => { cleanup(); reject(new Error("JSONP 載入失敗（可能是 EXEC_URL/權限/部署版本錯誤）")); };
 
-    document.body.appendChild(script);
+    const timer = setTimeout(() => { cleanup(); reject(new Error("JSONP Timeout")); }, timeoutMs);
+
+    document.head.appendChild(script);
   });
-}
-
-/***********************
- * API
- ***********************/
-async function apiUpdate(tableKey, id, fields){
-  const url = new URL(EXEC_URL);
-  url.searchParams.set("action", "update");
-  url.searchParams.set("api_key", API_KEY);
-  url.searchParams.set("table", tableKey);
-  url.searchParams.set("id", id);
-  // backward compat: old backend expects trip_id
-  if (tableKey === "trips") url.searchParams.set("trip_id", id);
-  for (const [k,v] of Object.entries(fields || {})) {
-    url.searchParams.set(k, v ?? "");
-  }
-  return await jsonp(url.toString());
-}
-
-async function apiAdd(tableKey, fields){
-  const url = new URL(EXEC_URL);
-  url.searchParams.set("action", "add");
-  url.searchParams.set("api_key", API_KEY);
-  url.searchParams.set("table", tableKey);
-  for (const [k,v] of Object.entries(fields || {})) {
-    url.searchParams.set(k, v ?? "");
-  }
-  return await jsonp(url.toString());
-}
-
-async function apiDelete(tableKey, id){
-  const url = new URL(EXEC_URL);
-  url.searchParams.set("action", "delete");
-  url.searchParams.set("api_key", API_KEY);
-  url.searchParams.set("table", tableKey);
-  url.searchParams.set("id", id);
-  // backward compat: old backend expects trip_id
-  if (tableKey === "trips") url.searchParams.set("trip_id", id);
-  return await jsonp(url.toString());
-}
-
-async function apiExport(){
-  const url = `${EXEC_URL}?action=export`;
-  return await jsonp(url);
 }
 
 /***********************
  * Workbook parsing
  ***********************/
+function normalizeHeader(h){ return String(h || "").trim(); }
+function toStr(v){ return (v === null || v === undefined) ? "" : String(v).trim(); }
+function uniq(arr){ return [...new Set(arr.filter(Boolean))]; }
+
+function escapeHtml(s){
+  return String(s ?? "")
+    .replace(/&/g,"&amp;")
+    .replace(/</g,"&lt;")
+    .replace(/>/g,"&gt;")
+    .replace(/"/g,"&quot;")
+    .replace(/'/g,"&#39;");
+}
+
+function fmtBadge(text, cls="pill"){
+  const t = escapeHtml(text || "");
+  if (!t) return "";
+  return `<span class="${cls}">${t}</span>`;
+}
+
+function formatIso(iso){
+  const s = toStr(iso);
+  if (!s) return "";
+  // Apps Script 有時回 ISO；直接顯示日期時間（不做時區推算）
+  return s.replace("T"," ").replace(".000Z","Z");
+}
+
+function mapSearchUrl(q){
+  q = toStr(q);
+  if (!q) return "";
+  return "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(q);
+}
+
 function sheetToTable_(wb, sheetName){
   if (!wb.SheetNames.includes(sheetName)) return null;
   const ws = wb.Sheets[sheetName];
@@ -199,42 +149,6 @@ function parseWorkbook(buf){
   };
 }
 
-/***********************
- * Offline + load
- ***********************/
-async function tryLoadFromLocalCache(){
-  if (localStorage.getItem(LS_OK) !== "1") return null;
-  const b64 = localStorage.getItem(LS_B64);
-  const t = localStorage.getItem(LS_TIME);
-  if (!b64) return null;
-  const buf = base64ToArrayBuffer(b64);
-  await ensureXLSX();
-  return { data: parseWorkbook(buf), generated_at: t || "" , from:"offline" };
-}
-
-async function loadFromExec(){
-  const payload = await apiExport();
-  if (!payload || !payload.ok || !payload.b64) {
-    throw new Error(payload?.error || "Proxy 回傳格式錯誤");
-  }
-  localStorage.setItem(LS_OK, "1");
-  localStorage.setItem(LS_B64, payload.b64);
-  localStorage.setItem(LS_TIME, payload.generated_at || "");
-  const buf = base64ToArrayBuffer(payload.b64);
-  await ensureXLSX();
-  return { data: parseWorkbook(buf), generated_at: payload.generated_at || "", from:"online" };
-}
-
-/***********************
- * helpers for Trips
- ***********************/
-function ensureMapsLink(link, placeText){
-  if (link) return link;
-  const q = toStr(placeText);
-  if (!q) return "";
-  return "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(q);
-}
-
 function tableRowValue(table, r, key){
   const idx = table?.cols?.[key];
   if (idx === undefined) return "";
@@ -247,3 +161,57 @@ function tableSetRowValue(table, r, key, val){
   r[idx] = val;
   return true;
 }
+
+/***********************
+ * Offline cache + load
+ ***********************/
+const LS_OK   = "trip_cache_ok_v2";
+const LS_B64  = "trip_cache_b64_v2";
+const LS_TIME = "trip_cache_time_v2";
+
+async function tryLoadFromLocalCache(){
+  if (localStorage.getItem(LS_OK) !== "1") return null;
+  const b64 = localStorage.getItem(LS_B64);
+  const t = localStorage.getItem(LS_TIME);
+  if (!b64) return null;
+  const buf = base64ToArrayBuffer(b64);
+  await requireXLSX();
+  return { data: parseWorkbook(buf), generated_at: t || "" , from:"offline" };
+}
+
+async function apiExport(){
+  // 優先使用 api.js 的 TripAPI（會自動帶 api_key、timeout、retry）
+  if (window.TripAPI && typeof window.TripAPI.exportXlsx === "function"){
+    return await window.TripAPI.exportXlsx();
+  }
+  if (!EXEC_URL) throw new Error("Missing TRIP_CONFIG.EXEC_URL");
+  const url = `${EXEC_URL}?action=export${API_KEY ? `&api_key=${encodeURIComponent(API_KEY)}` : ""}`;
+  return await jsonp(url, { timeoutMs: 20000 });
+}
+
+async function loadFromExec(){
+  const payload = await apiExport();
+  if (!payload || payload.ok !== true || !payload.b64) {
+    throw new Error(payload?.error || "Proxy 回傳格式錯誤");
+  }
+  localStorage.setItem(LS_OK, "1");
+  localStorage.setItem(LS_B64, payload.b64);
+  localStorage.setItem(LS_TIME, payload.generated_at || "");
+  const buf = base64ToArrayBuffer(payload.b64);
+  await requireXLSX();
+  return { data: parseWorkbook(buf), generated_at: payload.generated_at || "", from:"online" };
+}
+
+// expose a few globals (for pages)
+window.SHEETS = SHEETS;
+window.requireXLSX = requireXLSX;
+window.parseWorkbook = parseWorkbook;
+window.tryLoadFromLocalCache = tryLoadFromLocalCache;
+window.loadFromExec = loadFromExec;
+window.tableRowValue = tableRowValue;
+window.tableSetRowValue = tableSetRowValue;
+window.escapeHtml = escapeHtml;
+window.uniq = uniq;
+window.formatIso = formatIso;
+window.fmtBadge = fmtBadge;
+window.mapSearchUrl = mapSearchUrl;
