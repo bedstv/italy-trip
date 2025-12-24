@@ -343,6 +343,12 @@ modalMask.innerHTML = `
         <input class="mPrio" placeholder="必去 / 備選" />
       </div>
       <div class="editRow">
+        <label>建議時段</label>
+        <input class="mTime" placeholder="上午/下午/晚餐…" />
+        <label></label>
+        <span class="sub">（可留空）</span>
+      </div>
+      <div class="editRow">
         <label>名稱</label>
         <input class="mName" />
       </div>
@@ -353,6 +359,14 @@ modalMask.innerHTML = `
       <div class="editRow">
         <label>Google Maps 連結</label>
         <input class="mMap" placeholder="可留空" />
+      </div>
+      <div class="editRow">
+        <label>票務</label>
+        <input class="mTicket" placeholder="票價/連結/票號…（可留空）" />
+      </div>
+      <div class="editRow">
+        <label>訂位</label>
+        <input class="mBooking" placeholder="時間/店名/代碼…（可留空）" />
       </div>
       <div class="editRow">
         <label>備註</label>
@@ -374,6 +388,9 @@ function openModal(){
   // 預設：日期留空（代表未排日期）
   modalMask.querySelector(".mDate").value = "";
   modalMask.querySelector(".mPrio").value = "必去";
+  modalMask.querySelector(".mTime").value = "";
+  modalMask.querySelector(".mTicket").value = "";
+  modalMask.querySelector(".mBooking").value = "";
   modalMask.style.display = "flex";
 }
 function closeModal(){ modalMask.style.display = "none"; }
@@ -391,9 +408,12 @@ modalMask.querySelector(".mSave").addEventListener("click", async ()=>{
     "城市": modalMask.querySelector(".mCity")?.value?.trim() || "",
     "項目類型": modalMask.querySelector(".mType")?.value?.trim() || "",
     "必去/備選": modalMask.querySelector(".mPrio")?.value?.trim() || "必去",
+    "建議時段": modalMask.querySelector(".mTime")?.value?.trim() || "",
     "名稱": modalMask.querySelector(".mName")?.value?.trim() || "",
     "地點文字": modalMask.querySelector(".mPlace")?.value?.trim() || "",
     "Google Maps 連結": modalMask.querySelector(".mMap")?.value?.trim() || "",
+    "票務": modalMask.querySelector(".mTicket")?.value?.trim() || "",
+    "訂位": modalMask.querySelector(".mBooking")?.value?.trim() || "",
     "備註": modalMask.querySelector(".mNote")?.value || "",
   };
   if (!f["名稱"]) { status.textContent = "❌ 請填名稱"; return; }
