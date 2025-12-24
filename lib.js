@@ -244,3 +244,19 @@ window.fmtBadge = fmtBadge;
 window.mapSearchUrl = mapSearchUrl;
 window.ensureMapsLink = ensureMapsLink;
 window.todayStrLocal = todayStrLocal;
+
+
+// ===== Mobile modal usability =====
+// iOS/Android: when keyboard opens, keep the focused input visible inside modal.
+document.addEventListener("focusin", (ev) => {
+  const el = ev.target;
+  if (!(el instanceof HTMLElement)) return;
+  const modal = el.closest?.(".modal");
+  if (!modal) return;
+  // Delay to allow keyboard/layout settle
+  setTimeout(() => {
+    try {
+      el.scrollIntoView({ block: "center", inline: "nearest" });
+    } catch {}
+  }, 250);
+});
